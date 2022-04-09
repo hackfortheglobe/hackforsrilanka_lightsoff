@@ -95,3 +95,6 @@ celerybeat-schedule.*
 
 # env
 .env
+
+# local database
+data/
