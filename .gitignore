@@ -98,3 +98,6 @@ celerybeat-schedule.*
 
 # local database
 data/
+
+# celery
+celerybeat-schedule

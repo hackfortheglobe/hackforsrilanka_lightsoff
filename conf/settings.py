@@ -12,6 +12,7 @@ https://docs.djangoproject.com/en/4.0/ref/settings/
 
 from pathlib import Path
 import environ
+from celery.schedules import crontab
 import os
 
 
@@ -34,7 +35,12 @@ environ.Env.read_env(BASE_DIR / ".env")
 DEBUG = env("DEBUG")
 SECRET_KEY = env("SECRET_KEY")
 
-ALLOWED_HOSTS = ["localhost", "127.0.0.1", "lightsoff-srilanka.herokuapp.com"]
+ALLOWED_HOSTS = [
+    "localhost",
+    "127.0.0.1",
+    "0.0.0.0",
+    "lightsoff-srilanka.herokuapp.com",
+]
 
 
 # Application definition
@@ -49,9 +55,14 @@ INSTALLED_APPS = [
     # Third-party apps
     "rest_framework",
     "anymail",
+    "crispy_forms",
+    "crispy_tailwind",
     # Local apps
     "lightsoff.apps.LightsoffConfig",
 ]
+
+CRISPY_ALLOWED_TEMPLATE_PACKS = "tailwind"
+CRISPY_TEMPLATE_PACK = "tailwind"
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
@@ -123,7 +134,7 @@ AUTH_PASSWORD_VALIDATORS = [
 
 LANGUAGE_CODE = "en-us"
 
-TIME_ZONE = "UTC"
+TIME_ZONE = "Asia/Colombo"
 
 USE_I18N = True
 
@@ -164,5 +175,13 @@ EMAIL_BACKEND = "anymail.backends.mailgun.EmailBackend"
 DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL")
 SERVER_EMAIL = env("DEFAULT_FROM_EMAIL")
 
-BROKER_URL = "redis://redis:6379"
-CELERY_RESULT_BACKEND = "redis://redis:6379"
+BROKER_URL = env("REDIS_URL")
+CELERY_RESULT_BACKEND = env("REDIS_URL")
+
+CELERYBEAT_SCHEDULE = {
+    # A task that runs every hour of the day
+    "send_update_emails": {
+        "task": "lightsoff.tasks.send_update_emails",
+        "schedule": crontab(minute="*"),
+    },
+}
