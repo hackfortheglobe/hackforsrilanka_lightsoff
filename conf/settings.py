@@ -182,6 +182,6 @@ CELERYBEAT_SCHEDULE = {
     # A task that runs every hour of the day
     "send_update_emails": {
         "task": "lightsoff.tasks.send_update_emails",
-        "schedule": crontab(minute="*"),
+        "schedule": crontab(hour="*"),
     },
 }

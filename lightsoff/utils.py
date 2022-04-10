@@ -6,6 +6,9 @@ from django.core.mail import EmailMultiAlternatives
 from django.utils.html import strip_tags
 from pyparsing import html_comment
 
+import hashlib
+import json
+
 from lightsoff.models import Fetch
 
 
@@ -134,6 +137,6 @@ def send_mass_notification(emails, unsubscribe_tokens, group, date, schedule_tex
     print("Sent mass notification")
 
 
-# TODO: Implement this
+# TODO: Implement this feature
 def determine_group_by_geolocation():
     pass
