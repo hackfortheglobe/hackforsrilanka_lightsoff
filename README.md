@@ -35,10 +35,10 @@ The following environment variables need to be defined in both development and p
     REDIS_URL=redis://<host>:<port>
     DEBUG=<True or False>
     MAILGUN_API_KEY=<string>
-    MAILGUN_SENDER_DOMAIN=<example, hackfortheglobe.org>
-    DEFAULT_FROM_EMAIL=<example, lightsoff@hackfortheglobe.org>
-    DOMAIN_NAME=<example, lightsoff.hackfortheglobe.org>
-    API_BASE_URL=<example, https://api.hackfortheglobe.org/> (must include trailing slash!)
+    MAILGUN_SENDER_DOMAIN=<string, ex: hackfortheglobe.org>
+    DEFAULT_FROM_EMAIL=<email, ex: lightsoff@hackfortheglobe.org>
+    DOMAIN_NAME=<domain, ex: lightsoff.hackfortheglobe.org>
+    API_BASE_URL=<url, ex: https://api.hackfortheglobe.org> (must NOT include trailing slash!)
 
 During development, you can copy the `.env.example` file to a `.env` file and fill in the remaining variables, which are clarified above. Django will automatically recognize the `.env` file and load it into the environment. In production, it is recommended to define these in the environment instead of a file.
 
@@ -53,6 +53,13 @@ This project officially supports Python version `3.10.2`. Make sure you have thi
 The recommended package and environment manager for this project is `poetry`. To install it, run
 
     pip install poetry
+
+### Clone project
+
+To clone the repository, run:
+
+    git clone https://github.com/hackfortheglobe/hackforsrilanka_lightsoff.git;
+    cd hackforsrilanka_lightsoff
 
 ### Project dependencies
 
@@ -122,10 +129,8 @@ Before commiting to the repository, run this script to update the `requirements.
 
 ### Deploy to Heroku
 
-Deploying on heroku is simple. First, make sure you have the Heroku CLI installed on your machine. If not, [follow these instructions](https://devcenter.heroku.com/articles/heroku-cli#install-the-heroku-cli).
+Deploying on heroku is simple. First, make sure you have the Heroku CLI installed on your machine. If not, [follow these instructions](https://devcenter.heroku.com/articles/heroku-cli#install-the-heroku-cli). Then, navigate into the project's root directory and run:
 
-    git clone https://github.com/hackfortheglobe/hackforsrilanka_lightsoff.git;
-    cd hackforsrilanka_lightsoff;
     heroku create;
     heroku addons:create heroku-postgresql:hobby-dev;
     heroku addons:create heroku-redis:hobby-dev;
