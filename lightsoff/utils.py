@@ -1,13 +1,10 @@
 import datetime
-from tokenize import group
+import hashlib
+import json
 
 import requests
 from django.core.mail import EmailMultiAlternatives
 from django.utils.html import strip_tags
-from pyparsing import html_comment
-
-import hashlib
-import json
 
 from lightsoff.models import Fetch
 

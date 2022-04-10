@@ -15,6 +15,9 @@ from lightsoff.utils import (
 
 @app.task()
 def send_confirmation_email(email):
+    """Asynchronously sends a confirmation email to the user after sign up.
+    Have to run by callying send_confirmation_email.delay()
+    """
     send_mail(
         "LightsOff Subscription Confirmation",
         "You have been subscribed to the Lightsoff newsletter.",
@@ -25,6 +28,18 @@ def send_confirmation_email(email):
 
 @app.task()
 def send_update_emails():
+    """Periodic task to pull updates from the API for the next day.
+
+    Nothing is done if there are no updates or if we have already acted
+    upon the update in a previous run of this task. It checks the MD5 hash
+    of the JSON output to determine this.
+
+    Dates are provided in ISO 8601 format by the API endpoint. We convert
+    them to local time, which is defined as Asia/Colombo by the TZ variable in
+    the conf/settings.py file.
+
+    TODO: Also send updates about upcoming days if the schedule is available.
+    """
     for group, _ in GROUP_CHOICES:
         data = Subscriber.objects.filter(group=group).values_list(
             "email", "unsubscribe_token"
@@ -34,7 +49,6 @@ def send_update_emails():
 
         # Skip if there are no subscribers
         if len(emails) == 0:
-            print(f"No subscribers for {group}")
             continue
 
         tomorrow_date = timezone.localdate() + datetime.timedelta(days=1)
@@ -42,12 +56,10 @@ def send_update_emails():
 
         # Skip if we have already acted upon this schedule update
         if not commit_response_to_db_or_false(schedule, group, tomorrow_date):
-            print(f"Already acted upon schedule for {group}")
             continue
 
         # Skip if there are no power cuts
         if len(schedule) == 0:
-            print(f"No power cuts for group {group}")
             continue
 
         # Create list of human readable strings of the time windows of the cutoffs
@@ -56,7 +68,7 @@ def send_update_emails():
             raw_start_time = dateutil.parser.isoparse(row["starting_period"])
             raw_end_time = dateutil.parser.isoparse(row["ending_period"])
 
-            # Convert to local time (Asia / Colombos)
+            # Convert to local time (Asia / Colombo)
             start_time = timezone.make_aware(
                 timezone.make_naive(raw_start_time), timezone.get_current_timezone()
             )
@@ -72,4 +84,3 @@ def send_update_emails():
         send_mass_notification(
             emails, unsubscribe_tokens, group, tomorrow_date_readable, schedule_text
         )
-        print("Finished task")
