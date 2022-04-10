@@ -164,6 +164,12 @@ Currently, scaling and deploying this project might not be the best idea.
 
 ## Future directions
 
+- **Problem.** Email and internet connectivity is not accessible to everyone, especially in rural areas.
+
+  **Solution.** Lowering the requirements to access the service by relying on SMS instead of Email notifications.
+
+  **Challenge.** Traditional SMS sending services do not reliably send texts to Sri Lankan numbers as they can be blocked by telecom providers. We need to identify a local SMS provider that we can use to integerate into our service.
+
 - **Problem.** Currently, the service is only useful to users who know their CEB group letter for certain. While some people have figured this out, a decent portion of the Sri Lankan population is still trying to figure it out. The two main barriers to knowing one's group is, first, deviations in the actual power cut-off times, and second, the lack of a clear one-to-one mapping between the general location names specified by the CEB and a specific residence. For instance, one residence could lie at the outskirts of three different locations belonging to three different groups (a comment made by Sri Lankan focus group member).
 
   **Solution.** Implement an algorithm that takes as input several datapoints of when a user has experienced a power cut-off and their exact geographic location. Using this data, we can find the CEB group letter that best minimizes deviation from the published schedule and distance to the center of general area specified in the CEB documents.
