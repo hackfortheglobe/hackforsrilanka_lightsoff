@@ -3,6 +3,7 @@ import hashlib
 import json
 
 import requests
+from django.conf import settings
 from django.core.mail import EmailMultiAlternatives
 from django.utils.html import strip_tags
 
@@ -44,7 +45,7 @@ def query_schedule(group, start_date, end_date):
         dict: A dictionary containing the schedule
     """
     response = requests.get(
-        f"https://hackforsrilanka-api.herokuapp.com/api/illuminati/powerschedules/{group}",
+        f"{settings.API_BASE_URL}/api/illuminati/powerschedules/{group}",
         params={
             "start_date": start_date.isoformat(),
             "end_date": end_date.isoformat(),
