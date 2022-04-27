@@ -8,7 +8,8 @@ from django.core.mail import EmailMultiAlternatives
 from django.utils.html import strip_tags
 
 from lightsoff.models import Fetch
-
+import requests
+from django.conf import settings
 
 def commit_response_to_db_or_false(response, group, date):
     """Stores a hash of a request to the database.
@@ -138,3 +139,29 @@ def send_mass_notification(emails, unsubscribe_tokens, group, date, schedule_tex
 # TODO: Implement this feature
 def determine_group_by_geolocation():
     pass
+
+# import timezone
+from datetime import timezone
+
+def login_sms_api():
+    user_credentials = {"username": settings.SMS_API_USERNAME,
+                        "password": settings.SMS_API_PASSWORD}
+    pre_token_time = timezone.now() - timezone.timedelta(hours=11, minutes=50)
+
+    token = SmsApiAccessToken.filter(created_at__time__gt=pre_token_time,
+                                     expired_at__time__lt=pre_token_time).order_by("id").first()
+
+    if token:
+        return token.access_token
+    else:
+        header = {'Content-Type: application/json'}
+        res_data = requests.post("https://e-sms.dialog.lk/api/v1/login",
+                                 data=user_credentials)
+        expired_token_time = timezone.now() + timezone.timedelta(hours=12)
+        if req_data.status_code == 200:
+            if data.get("errCode") == '':
+                data = req_data.json()
+                SmsApiAccessToken.objects.create(access_token=data.get("token"),
+                                                 expired_at=expired_token_time)
+                return data.get("token")
+        raise Exception("Credential's are invalide for sms api.")

@@ -1,17 +1,22 @@
 import datetime
 from conf.celery import app
 from django.core.mail import send_mail
+from datetime import datetime, timedelta
 from django.utils import timezone
 
 import dateutil.parser
+from .models import *
 
-from lightsoff.models import GROUP_CHOICES, Subscriber
+# from lightsoff.models import GROUP_CHOICES, Subscriber
 from lightsoff.utils import (
     commit_response_to_db_or_false,
     get_schedule_date,
     send_mass_notification,
 )
 
+import requests
+import json
+from requests.structures import CaseInsensitiveDict
 
 @app.task()
 def send_confirmation_email(email):
@@ -84,3 +89,62 @@ def send_update_emails():
         send_mass_notification(
             emails, unsubscribe_tokens, group, tomorrow_date_readable, schedule_text
         )
+from django.core.paginator import Paginator
+from django.db.models import F
+
+@app.task(bind=True)
+def send_sms_notification():
+    url = "https://e-sms.dialog.lk/api/v1/sms"
+    headers = CaseInsensitiveDict()
+    access_token = login_sms_api()
+    headers["Authorization"] = f"Bearer {access_token}"
+    headers["Content-Type"] = "application/json"
+    schedule_group = ScheduleGroup.objects.filter(is_run=False)
+    for schedule_data in schedule_group:
+        all_sub = Subscriber.objects.filter(group_name=schedule_data)
+        paginator = Paginator(all_sub, 100)
+        for page_no in paginator.page_range:
+            current_page = paginator.get_page(page_no)
+            current_qs = current_page.object_list
+            tx_id = Transaction.objects.all().order_by('-id').first()
+            message = f"There will be a scheduled power cutoff for group {schedule_data.group_name},from {schedule_data.starting_period} to {schedule_data.ending_period}."
+            data ={
+                    "sourceAddress": "hack4globe",
+                    "message": ,
+                    "transaction_id": f"{tx_id}",
+                    "msisdn": list(current_qs.values(mobile=F("mobile_number")))
+                    }
+            data = json.dumps(data)
+            resp = requests.post(url, headers=headers, data=data)
+            if resp.status_code == 200:
+                res_data = resp.json()
+                tx_data = Transaction.objects.create(campaingn_id=res_data["data"].get("campaignId", None),
+                                           campaingn_cost=res_data["data"].get("campaignCost", None),
+                                           user_id=res_data["data"].get("userId", None),
+                                           status="SUCCESS")
+                batch_data = Batch.objects.create(transaction=tx_data,
+                                    status="SUCCESS",
+                                    message=message,
+                                    schedule=schedule_data)
+                batch_data.subscriber.set(list(current_qs.values_list("id")))
+                batch_data.save()
+
+            else:
+                tx_data = Transaction.objects.create(campaingn_id=res_data["data"].get("campaignId", None),
+                                                   campaingn_cost=res_data["data"].get("campaignCost", None),
+                                                   user_id=res_data["data"].get("userId", None),
+                                                   status="FAILED")
+                Batch.objects.create(transaction=tx_data,
+                                    status="FAILED",
+                                    message=message,
+                                    schedule=schedule_data)
+                batch_data.subscriber.set(list(current_qs.values_list("id")))
+                batch_data.save()
+                PeriodicTask.objects.create(clocked=clock_time,
+                                            one_off=True,
+                                            task="send_sms_to_batch",
+                                            name=f'send_batch_sms_{batch_data.id}')
+
+@app.task(bind=True)
+def send_sms_to_batch():
+    pass

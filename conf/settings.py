@@ -48,7 +48,9 @@ INSTALLED_APPS = [
     "anymail",
     "crispy_forms",
     "crispy_tailwind",
-    # Local apps
+    # Local apps,
+    "django_celery_beat",
+    "rest_framework",
     "lightsoff.apps.LightsoffConfig",
 ]
 
@@ -135,15 +137,19 @@ SERVER_EMAIL = env("DEFAULT_FROM_EMAIL")
 # Celery settings
 BROKER_URL = env("REDIS_URL")
 CELERY_RESULT_BACKEND = env("REDIS_URL")
-CELERYBEAT_SCHEDULE = {
-    # Task to pull updates from API hourly
-    "send_update_emails": {
-        "task": "lightsoff.tasks.send_update_emails",
-        # Change pull frquency here
-        "schedule": crontab(hour="*"),
-    },
-}
 
+# CELERYBEAT_SCHEDULE = {
+#     # Task to pull updates from API hourly
+#     "send_update_emails": {
+#         "task": "lightsoff.tasks.send_update_emails",
+#         # Change pull frquency here
+#         "schedule": crontab(hour="*"),
+#     },
+# }
+SMS_API_USERNAME = env("SMS_API_USERNAME")
+SMS_API_PASSWORD = env("SMS_API_PASSWORD")
+
+CELERY_BEAT_SCHEDULER = 'django_celery_beat.schedulers:DatabaseScheduler'
 # django-crispy-forms settings
 CRISPY_ALLOWED_TEMPLATE_PACKS = "tailwind"
 CRISPY_TEMPLATE_PACK = "tailwind"
