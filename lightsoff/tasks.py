@@ -1,9 +1,9 @@
 import datetime
 from conf.celery import app
 from django.core.mail import send_mail
-from datetime import datetime, timedelta
+from datetime import timedelta
 from django.utils import timezone
-
+from django.conf import settings
 import dateutil.parser
 from .models import *
 
@@ -12,11 +12,16 @@ from lightsoff.utils import (
     commit_response_to_db_or_false,
     get_schedule_date,
     send_mass_notification,
+    login_sms_api
 )
 
 import requests
 import json
 from requests.structures import CaseInsensitiveDict
+from django_celery_beat.models import (
+                                       PeriodicTask,
+                                       ClockedSchedule,
+                                       CrontabSchedule)
 
 @app.task()
 def send_confirmation_email(email):
@@ -93,7 +98,7 @@ from django.core.paginator import Paginator
 from django.db.models import F
 
 @app.task(bind=True)
-def send_sms_notification():
+def send_sms_notification(self):
     url = "https://e-sms.dialog.lk/api/v1/sms"
     headers = CaseInsensitiveDict()
     access_token = login_sms_api()
@@ -101,21 +106,15 @@ def send_sms_notification():
     headers["Content-Type"] = "application/json"
     schedule_group = ScheduleGroup.objects.filter(is_run=False)
     for schedule_data in schedule_group:
-        all_sub = Subscriber.objects.filter(group_name=schedule_data)
+        all_sub = Subscriber.objects.filter(group_name=schedule_data.group_name)
         paginator = Paginator(all_sub, 100)
         for page_no in paginator.page_range:
             current_page = paginator.get_page(page_no)
             current_qs = current_page.object_list
             tx_id = Transaction.objects.all().order_by('-id').first()
             message = f"There will be a scheduled power cutoff for group {schedule_data.group_name},from {schedule_data.starting_period} to {schedule_data.ending_period}."
-            data ={
-                    "sourceAddress": "hack4globe",
-                    "message": ,
-                    "transaction_id": f"{tx_id}",
-                    "msisdn": list(current_qs.values(mobile=F("mobile_number")))
-                    }
-            data = json.dumps(data)
-            resp = requests.post(url, headers=headers, data=data)
+            numbers = list(current_qs.values(mobile=F("mobile_number")))
+            resp = send_sms(numbers, message, tx_id.id)
             if resp.status_code == 200:
                 res_data = resp.json()
                 tx_data = Transaction.objects.create(campaingn_id=res_data["data"].get("campaignId", None),
@@ -126,25 +125,51 @@ def send_sms_notification():
                                     status="SUCCESS",
                                     message=message,
                                     schedule=schedule_data)
-                batch_data.subscriber.set(list(current_qs.values_list("id")))
+                batch_data.subscriber.set(list(current_qs.values_list("id", flat=True)))
                 batch_data.save()
-
+                schedule_data.is_run = True
+                schedule_data.save()
             else:
-                tx_data = Transaction.objects.create(campaingn_id=res_data["data"].get("campaignId", None),
-                                                   campaingn_cost=res_data["data"].get("campaignCost", None),
-                                                   user_id=res_data["data"].get("userId", None),
-                                                   status="FAILED")
-                Batch.objects.create(transaction=tx_data,
+                res_data = resp.json()
+                tx_data = Transaction.objects.create(status="FAILED")
+                batch_data = Batch.objects.create(transaction=tx_data,
                                     status="FAILED",
                                     message=message,
                                     schedule=schedule_data)
-                batch_data.subscriber.set(list(current_qs.values_list("id")))
+                batch_data.subscriber.set(list(current_qs.values_list("id", flat=True)))
                 batch_data.save()
-                PeriodicTask.objects.create(clocked=clock_time,
-                                            one_off=True,
-                                            task="send_sms_to_batch",
+                time = datetime.datetime.now(tz=timezone.utc) + timedelta(minutes=5)
+                clock_time = ClockedSchedule.objects.create(clocked_time=time)
+                PeriodicTask.objects.create(crontab=clock_time,
+                                            task="lightsoff.tasks.send_sms_to_batch",
                                             name=f'send_batch_sms_{batch_data.id}')
 
-@app.task(bind=True)
-def send_sms_to_batch():
-    pass
+@app.task(bind=True, max_retries=5)
+def send_sms_to_batch(self):
+    url = "https://e-sms.dialog.lk/api/v1/sms"
+    headers = CaseInsensitiveDict()
+    access_token = login_sms_api()
+    headers["Authorization"] = f"Bearer {access_token}"
+    headers["Content-Type"] = "application/json"
+    batch_data = Batch.objects.filter(status="FAILED").select_related()
+    tx_id = Transaction.objects.all().order_by('-id').first()
+    message = f"There will be a scheduled power cutoff for group {batch_data.schedule.group_name},from {batch_data.schedule.starting_period} to {batch_data.schedule.ending_period}."
+    numbers = list(current_qs.values(mobile=F("mobile_number")))
+    resp = send_sms(numbers, message, tx_id.id)
+    if resp.status_code == 200:
+        tx_data = Transaction.objects.create(campaingn_id=res_data["data"].get("campaignId", None),
+                                   campaingn_cost=res_data["data"].get("campaignCost", None),
+                                   user_id=res_data["data"].get("userId", None),
+                                   status="SUCCESS")
+        batch_data.transaction = tx_data
+        batch_data.status = "SUCCESS"
+        batch_data.save()
+        print("SUCCESS")
+    else:
+        tx_data = Transaction.objects.create(status="FAILED")
+        batch_data.transaction = tx_data
+        batch_data.status = "FAILED"
+        batch_data.save()
+        print("FAILED")
+        raise self.retry(countdown=300)
+

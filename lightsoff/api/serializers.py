@@ -1,9 +1,24 @@
 from rest_framework import serializers
-from ..models import ScheduleGroup, Place
+from ..models import ScheduleGroup, Place, Subscriber
 from django_celery_beat.models import PeriodicTask, ClockedSchedule
 from django.db import transaction 
 from datetime import datetime, timedelta
 from django.utils import timezone
+
+
+class UserSubscriptionSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = Subscriber
+        fields = '__all__'
+
+
+class UnsubscribedSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = Subscriber
+        fields = ("mobile_number", "is_unsubscribed",)
+
 
 class CreateScheduleSerializer(serializers.ModelSerializer):
 
@@ -14,11 +29,11 @@ class CreateScheduleSerializer(serializers.ModelSerializer):
     @transaction.atomic
     def create(self, validated_data):
         obj = ScheduleGroup(**validated_data)
-        time = datetime.now(tz=timezone.utc) + timedelta(minutes=10)
+        time = datetime.now(tz=timezone.utc) + timedelta(minutes=1)
         clock_time = ClockedSchedule.objects.create(clocked_time=time)
         periodict_task = PeriodicTask.objects.create(clocked=clock_time,
                                                     one_off=True,
-                                                    task="send_sms_notification",
+                                                    task="lightsoff.tasks.send_sms_notification",
                                                     name=f'send_bulk_sms{clock_time.id}')
         obj.periodic_task = periodict_task
         obj.save()

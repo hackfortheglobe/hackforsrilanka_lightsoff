@@ -40,23 +40,26 @@ def generate_random_token():
 class GroupName(models.Model):
     name = models.CharField(max_length=5)
 
+    def __str__(self):
+        return '{}'.format(self.name)
+
 class Subscriber(models.Model):
-    phone_number_regex = RegexValidator(regex=r"/^\d{9}$/",
+    phone_number_regex = RegexValidator(regex=r'^\d{9}$',
                                         message="Phone number must be entered in the format '23456789'. Up to 9 digits allowed.")
     mobile_number = models.CharField(validators=[phone_number_regex], max_length=9, unique=True)
     name = models.CharField(max_length=50, blank=True, null=True)
     area = models.CharField(max_length=150, blank=True, null=True)
     group_name = models.ForeignKey(GroupName,
                             on_delete=models.CASCADE,
-                            null=True)
+                            null=True,
+                            blank=True)
+    is_verified = models.BooleanField(default=False)
+    is_unsubscribed = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
-        return '{} - {}'.format(self.group, self.phone_number)
-
-
-# class Batch(models.Model):
+        return '{} - {}'.format(self.group_name, self.mobile_number)
 
 
 # class Notification(models.Model):
@@ -106,9 +109,13 @@ class Transaction(models.Model):
         )
 
     campaingn_id = models.CharField(max_length=8,
-                                    blank=True)
-    campaingn_cost = models.FloatField(blank=True)
-    user_id = models.CharField(max_length=8)
+                                    blank=True,
+                                    null=True)
+    campaingn_cost = models.FloatField(blank=True,
+                                       null=True)
+    user_id = models.CharField(max_length=8,
+                              blank=True,
+                              null=True)
     status = models.CharField(choices=TX_STATUS,
                               max_length=10,
                               null=True)

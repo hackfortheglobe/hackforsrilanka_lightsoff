@@ -7,7 +7,96 @@ from django_celery_beat.models import PeriodicTask, ClockedSchedule
 from datetime import datetime, timezone
 from django.db.models import Q
 from django.utils import timezone
+from ..utils import get_totp, login_sms_api, send_sms
 
+
+class UserSubscription(APIView):
+
+    def send_phone_otp(self, phone_number, otp):
+        tx_id = Transaction.objects.all().order_by('-id').first()
+        message = f"Please enter this {otp} to verify your mobile number."
+        resp = send_sms([phone_number], message, tx_id.id)
+        if resp.status_code == 200:
+            res_data = resp.json()
+            tx_data = Transaction.objects.create(campaingn_id=res_data["data"].get("campaignId", None),
+                                                 campaingn_cost=res_data["data"].get("campaignCost", None),
+                                                 user_id=res_data["data"].get("userId", None),
+                                                 status="SUCCESS")
+            return True
+        else:
+            res_data = resp.json()
+            tx_data = Transaction.objects.create(status="FAILED")
+            return False
+
+    def post(self, request):
+
+        user = Subscriber.objects.filter(mobile_number=request.data["mobile_number"].strip(),
+                                         is_unsubscribed=True).first()
+        if user:
+            serializer = UserSubscriptionSerializer(data=request.data,
+                                                    instance=user,
+                                                    partial=True)
+            serializer.save()
+            user.is_unsubscribed = False
+            user.save()
+            return Response({"message": "Subscribed successfully."})
+        totp, secret_key = get_totp()
+        group_name = GroupName.objects.filter(name=request.data["group_name"]).first()
+        request.data["group_name"] = group_name.id
+        serializer = UserSubscriptionSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            phone_number = request.data.get("mobile_number")
+            self.send_phone_otp(phone_number, totp.now())
+            return Response({"message": "Please verify your mobile to providing otp.",
+                            "secret_key": secret_key,
+                            "mobile_number": phone_number})
+        else:
+            return Response({"message": "", "errors": serializer.errors},
+                            status=status.HTTP_400_BAD_REQUEST)
+
+
+class VerifyOtp(APIView):
+
+    def post(self, request):
+        otp = request.data.get('otp')
+        phone_number = request.data.get("mobile_number")
+        user = Subscriber.objects.filter(mobile_number=phone_number).first()
+        if user:
+            totp, secret_key = get_totp(key=request.data.get('secret_key'))
+            if totp.verify(otp):
+                user.is_verified = True
+                user.save()
+                return Response(
+                    {'message': 'OTP is verified successfully'}
+                )
+            return Response(
+                {'message': 'OTP or secret_key is either expired or invalid, please try again'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        else:
+             return Response(
+                {'message': 'Something went wrong.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+class Unsubscribed(APIView):
+
+    def post(self, request):
+        data["is_unsubscribed"] = True
+        user = Subscriber.objects.filter(mobile_number=request.data["mobile_number"].strip()).first()
+        if user:
+            serializer = UnsubscribedSerializer(instance=user,
+                                                data=data,
+                                                partial=True)
+            if serializer.is_valid():
+                serializer.save()
+                return Response({"message": "Unsubscribed successfully."})
+            else:
+                return Response({"message": "", "errors": serializer.errors})
+        else:
+            return Response({"message": "", "errors": "Account not found with this number."},
+                            status=status.HTTP_404_NOT_FOUND)
 
 class CreateSchedule(APIView):
 
@@ -40,46 +129,107 @@ class GetAllPublicSchedule(APIView):
         return Response({"message": "", "data": serializer.data})
 
 
+class AllGroupName(APIView):
+    def get(self, request):
+        data = GroupName.objects.all().values_list("name", flat=True)
+        return Response({"message": "", "data": data})
+
+class AllGCCName(APIView):
+    def get(self, request):
+        data = Place.objects.all().values_list("gcc", flat=True).order_by("gcc")
+        return Response({"message": "", "data": data})
+
+class AllAreaName(APIView):
+    def get(self, request):
+        gcc = request.query_params.get('gcc')
+        if gcc:
+            data = Place.objects.filter(gcc=gcc).values_list("area", flat=True).order_by("area")
+            return Response({"message": "", "data": data})
+        else:
+            return Response({"message": "",
+                             "errors": "gcc parameter is required."},
+                            status=status.HTTP_400_BAD_REQUEST)
+
 class SchedulesByGroup(APIView):
 
-    def get(self, request, group, *args):
-        from_date = args.get("from_date", None)
-        to_date = args.get("to_date", None)
+    def get(self, request, group):
+        from_date = request.query_params.get("from_date", None)
+        to_date = request.query_params.get("to_date", None)
+        print(from_date, to_date)
         if from_date and to_date:
             schedule_group = ScheduleGroup.objects.filter(created_at__date__range=[from_date, to_date],
-                                                          group__in=group.upper())
+                                                          group_name__name=group.upper())
         else:
-            schedule_group = ScheduleGroup.objects.filter(updated_at__date__gt=timezone.now().today())
-        serializer = Schedule_group(data=ScheduleGroup.objects.all())
+            schedule_group = ScheduleGroup.objects.filter(created_at__date__gte=datetime.now(tz=timezone.utc).today(),
+                                                          group_name__name=group.upper())
+        serializer = PublicScheduleSerializer(schedule_group,
+                                              many=True)
         return Response({"message": "", "data": serializer.data})
 
 
 class SchedulesByPlace(APIView):
 
-    def get(self, request, place, *args):
-        from_date = args.get("from_date", None)
-        to_date = args.get("to_date", None)
-        if from_date and to_date:
-            schedule_place = Place.objects.filter(Q(Q(gcc__icontains=place) | Q(area__icontains=place)) \
-                                                  & Q(updated_at__date__gt=timezone.now().today()))
+    def get(self, request):
+        area = request.query_params.get("area", None)
+        district = request.query_params.get("district", None)
+        if district and area and area != "" and district != "":
+            from_date = request.query_params.get("from_date", None)
+            to_date = request.query_params.get("to_date", None)
+            if from_date and to_date:
+                schedule_place = Place.objects.filter(gcc=district, area=area)
+            else:
+                schedule_place = Place.objects.filter(gcc=district, area=area)
+            if len(schedule_place) != 0:
+                data = []
+                for schedule_data in schedule_place:
+                    if from_date and to_date:
+                        schedule_group = ScheduleGroup.objects.filter(created_at__date__range=[from_date, to_date],
+                                                                  group_name__in=schedule_data.groups.all())
+                    else:
+                        schedule_group = ScheduleGroup.objects.filter(created_at__date=datetime.now(tz=timezone.utc).today(),
+                                                                      group_name__in=schedule_data.groups.all())
+                serializer = PublicScheduleSerializer(schedule_group,
+                                                      many=True)
+                return Response({"message": "", "data": serializer.data})
+            else:
+                return Response({"message": "", "data": []})
         else:
-            schedule_place = Place.objects.filter(Q(created_at__date__range=[from_date, to_date])\
-                                                  & Q(Q(gcc__icontains=place) | Q(area__icontains=place)))
-        serializer = Schedule_group(data=ScheduleGroup.objects.all())
-        return Response({"message": "", "data": serializer.data})
+            return Response({"message": "",
+                             "errors": "area and district parameter is required."},
+                            status=status.HTTP_400_BAD_REQUEST)
 
 class PlaceView(APIView):
 
     def post(self, request):
-        serializer = CreatePlaceSerializer(data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response({"message": "Successfully inserted."})
-        else:
-            return Response({"message": "Provided data is invalid."},
-                             status=status.HTTP_400_BAD_REQUEST)
+        for gcc_data in request.data:
+            for area_data in request.data[gcc_data]:
+                place_obj = Place.objects.filter(gcc=gcc_data,
+                                                 area=area_data
+                                                 ).first()
+                if not place_obj:
+                    place_obj = Place.objects.create(gcc=gcc_data,
+                                                     area=area_data,
+                                                     feeders=request.data[gcc_data][area_data]["feeders"])
+                else:
+                    place_obj.area = area_data
+                    place_obj.feeders = request.data[gcc_data][area_data]["feeders"]
+                    place_obj.save()
+                group_collection = []
+                for group_name in request.data[gcc_data][area_data]["groups"]:
+                    group_obj = GroupName.objects.filter(name=group_name).first()
+                    if not group_obj:
+                        group_obj = GroupName.objects.create(name=group_name)
+                    group_collection.append(group_obj.id)
+                place_obj.groups.set(group_collection)
+        return Response({"message": "Successfully inserted."})
+        
+            # return Response({"message": "Provided data is invalid."},
+            #                  status=status.HTTP_400_BAD_REQUEST)
 
 
-class AllGroup(APIView):
+class GetAllSubscribedUser(APIView):
     def get(self, request):
-        pass
+        user_data = Subscriber.objects.all().order_by("-id")
+        serializer = UserSubscriptionSerializer(user_data, many=True)
+        return Response({"message": "", "data": serializer.data})
+
