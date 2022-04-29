@@ -1,3 +1,4 @@
+django-celery-beat
 amqp==5.1.0; python_version >= "3.7" \
     --hash=sha256:a575f4fa659a2290dc369b000cff5fea5c6be05fe3f2d5e511bcf56c7881c3ef \
     --hash=sha256:446b3e8a8ebc2ceafd424ffcaab1c353830d48161256578ed7a65448e601ebed
