@@ -33,7 +33,8 @@ DEBUG = env("DEBUG")
 SECRET_KEY = env("SECRET_KEY")
 DOMAIN_NAME = env("DOMAIN_NAME")
 ALLOWED_HOSTS = [DOMAIN_NAME]
-
+FRONT_END_ORIGIN = env("FRONT_END_ORIGIN")
+CORS_ALLOWED_ORIGINS = [FRONT_END_ORIGIN]
 # URL to API endpoint that provides data about power cutoff schedules
 API_BASE_URL = env("API_BASE_URL")
 
@@ -53,9 +54,11 @@ INSTALLED_APPS = [
     "rest_framework",
     "lightsoff.apps.LightsoffConfig",
     "rest_framework_api_key",
+    "corsheaders",
 ]
 
 MIDDLEWARE = [
+    "corsheaders.middleware.CorsMiddleware",
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
