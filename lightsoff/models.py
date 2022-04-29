@@ -107,7 +107,9 @@ class Transaction(models.Model):
         (SUCCESS, "SUCCESS"),
         (FAILED, "FAILED"),
         )
-
+    tx_id = models.CharField(max_length=8,
+                             blank=True,
+                             null=True)
     campaingn_id = models.CharField(max_length=8,
                                     blank=True,
                                     null=True)

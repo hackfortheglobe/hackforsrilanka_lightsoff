@@ -10,6 +10,7 @@ import requests
 from .models import SmsApiAccessToken, Transaction
 from datetime import timezone, timedelta
 import pyotp
+import math, random
 
 # def commit_response_to_db_or_false(response, group, date):
 #     """Stores a hash of a request to the database.
@@ -177,7 +178,6 @@ def get_totp(key=None):
     if not key:
         key = pyotp.random_base32()
     totp = pyotp.TOTP(key, digits=settings.OTP_NUM_DIGITS, interval=settings.OTP_EXPIRE_SECONDS)
-    print(totp)
     return totp, key
 
 import json
@@ -185,6 +185,7 @@ from requests.structures import CaseInsensitiveDict
 from django.db.models import F
 
 def send_sms(message, numbers, tx_id):
+
     headers = CaseInsensitiveDict()
     access_token = login_sms_api()
     url = "https://e-sms.dialog.lk/api/v1/sms"
@@ -200,3 +201,13 @@ def send_sms(message, numbers, tx_id):
     resp = requests.post(url, headers=headers, data=data)
     return resp
 
+
+def generate_uniqe_id():
+    digits = "0123456789"
+    tx_id = ""
+    while True:
+        for i in range(8):
+            tx_id += digits[math.floor(random.random() * 10)]
+        tx_id = int(tx_id)
+        if not Transaction.objects.filter(tx_id=tx_id).first():
+            return tx_id

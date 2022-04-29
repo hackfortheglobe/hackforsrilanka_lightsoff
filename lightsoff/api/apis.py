@@ -7,26 +7,28 @@ from django_celery_beat.models import PeriodicTask, ClockedSchedule
 from datetime import datetime, timezone
 from django.db.models import Q
 from django.utils import timezone
-from ..utils import get_totp, login_sms_api, send_sms
+from ..utils import *
 from rest_framework_api_key.permissions import HasAPIKey
 
 
 class UserSubscription(APIView):
 
     def send_phone_otp(self, phone_number, otp):
-        tx_id = Transaction.objects.all().order_by('-id').first()
+        tx_id = generate_uniqe_id()
         message = f"Please enter this {otp} to verify your mobile number."
-        resp = send_sms([phone_number], message, tx_id.id)
+        resp = send_sms([phone_number], message, tx_id)
         if resp.status_code == 200:
             res_data = resp.json()
             tx_data = Transaction.objects.create(campaingn_id=res_data["data"].get("campaignId", None),
                                                  campaingn_cost=res_data["data"].get("campaignCost", None),
                                                  user_id=res_data["data"].get("userId", None),
-                                                 status="SUCCESS")
+                                                 status="SUCCESS",
+                                                 tx_id=tx_id)
             return True
         else:
             res_data = resp.json()
-            tx_data = Transaction.objects.create(status="FAILED")
+            tx_data = Transaction.objects.create(status="FAILED",
+                                                 tx_id=tx_id)
             return False
 
     def post(self, request):

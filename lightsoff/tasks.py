@@ -112,16 +112,17 @@ def send_sms_notification(self):
         for page_no in paginator.page_range:
             current_page = paginator.get_page(page_no)
             current_qs = current_page.object_list
-            tx_id = Transaction.objects.all().order_by('-id').first()
+            tx_id = generate_uniqe_id()
             message = f"There will be a scheduled power cutoff for group {schedule_data.group_name},from {schedule_data.starting_period} to {schedule_data.ending_period}."
             numbers = list(current_qs.values(mobile=F("mobile_number")))
-            resp = send_sms(numbers, message, tx_id.id)
+            resp = send_sms(numbers, message, tx_id)
             if resp.status_code == 200:
                 res_data = resp.json()
                 tx_data = Transaction.objects.create(campaingn_id=res_data["data"].get("campaignId", None),
                                            campaingn_cost=res_data["data"].get("campaignCost", None),
                                            user_id=res_data["data"].get("userId", None),
-                                           status="SUCCESS")
+                                           status="SUCCESS",
+                                           tx_id=tx_id)
                 batch_data = Batch.objects.create(transaction=tx_data,
                                     status="SUCCESS",
                                     message=message,
@@ -130,7 +131,8 @@ def send_sms_notification(self):
                 batch_data.save()
             else:
                 res_data = resp.json()
-                tx_data = Transaction.objects.create(status="FAILED")
+                tx_data = Transaction.objects.create(status="FAILED",
+                                                     tx_id=tx_id)
                 batch_data = Batch.objects.create(transaction=tx_data,
                                     status="FAILED",
                                     message=message,
@@ -139,7 +141,7 @@ def send_sms_notification(self):
                 batch_data.save()
                 time = datetime.datetime.now(tz=timezone.utc) + timedelta(minutes=5)
                 clock_time = ClockedSchedule.objects.create(clocked_time=time)
-                PeriodicTask.objects.create(crontab=clock_time,
+                PeriodicTask.objects.create(clocked=clock_time,
                                             task="lightsoff.tasks.send_sms_to_batch",
                                             name=f'send_batch_sms_{batch_data.id}')
             schedule_data.is_run = True
@@ -158,21 +160,23 @@ def send_sms_to_batch(self):
                                                 queryset=Subscriber.objects.filter(is_unsubscribed=False)
                                                             )
                                                         )
-    tx_id = Transaction.objects.all().order_by('-id').first()
+    tx_id = generate_uniqe_id()
     message = f"There will be a scheduled power cutoff for group {batch_data.schedule.group_name},from {batch_data.schedule.starting_period} to {batch_data.schedule.ending_period}."
     numbers = list(current_qs.values(mobile=F("mobile_number")))
-    resp = send_sms(numbers, message, tx_id.id)
+    resp = send_sms(numbers, message, tx_id)
     if resp.status_code == 200:
         tx_data = Transaction.objects.create(campaingn_id=res_data["data"].get("campaignId", None),
                                    campaingn_cost=res_data["data"].get("campaignCost", None),
                                    user_id=res_data["data"].get("userId", None),
-                                   status="SUCCESS")
+                                   status="SUCCESS",
+                                   tx_id=tx_id)
         batch_data.transaction = tx_data
         batch_data.status = "SUCCESS"
         batch_data.save()
         print("SUCCESS")
     else:
-        tx_data = Transaction.objects.create(status="FAILED")
+        tx_data = Transaction.objects.create(status="FAILED",
+                                             tx_id=tx_id)
         batch_data.transaction = tx_data
         batch_data.status = "FAILED"
         batch_data.save()
