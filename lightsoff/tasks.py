@@ -142,6 +142,7 @@ def send_sms_notification(self):
                 time = datetime.datetime.now(tz=timezone.utc) + timedelta(minutes=5)
                 clock_time = ClockedSchedule.objects.create(clocked_time=time)
                 PeriodicTask.objects.create(clocked=clock_time,
+                                            one_off=True,
                                             task="lightsoff.tasks.send_sms_to_batch",
                                             name=f'send_batch_sms_{batch_data.id}')
             schedule_data.is_run = True
