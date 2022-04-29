@@ -194,7 +194,7 @@ def send_sms(message, numbers, tx_id):
     data = {
             "sourceAddress": "hack4globe",
             "message": message,
-            "transaction_id": f"{tx_id}",
+            "transaction_id": tx_id,
             "msisdn": numbers
             }
     data = json.dumps(data)
