@@ -156,7 +156,7 @@ SMS_API_PASSWORD = env("SMS_API_PASSWORD")
 CELERYBEAT_SCHEDULER = 'django_celery_beat.schedulers:DatabaseScheduler'
 
 CELERY_TASK_PUBLISH_RETRY = env("SEND_SMS_MAX_RETRY", cast=int)
-
+CELERY_IMPORTS = ("lightsoff.tasks",)
 # django-crispy-forms settings
 CRISPY_ALLOWED_TEMPLATE_PACKS = "tailwind"
 CRISPY_TEMPLATE_PACK = "tailwind"

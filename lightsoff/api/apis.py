@@ -43,17 +43,22 @@ class UserSubscription(APIView):
                             status=status.HTTP_208_ALREADY_REPORTED)
         totp, secret_key = get_totp()
         group_name = GroupName.objects.filter(name=request.data["group_name"]).first()
-        request.data["group_name"] = group_name.id
-        serializer = UserSubscriptionSerializer(data=request.data)
-        if serializer.is_valid():
-            phone_number = request.data.get("mobile_number")
-            self.send_phone_otp(phone_number, totp.now())
-            return Response({"message": "Please verify your mobile to providing otp.",
-                            "secret_key": secret_key,
-                            "mobile_number": phone_number})
-        else:
-            return Response({"message": "", "errors": serializer.errors},
-                            status=status.HTTP_400_BAD_REQUEST)
+        if group_name:
+            request.data["group_name"] = group_name.id
+            serializer = UserSubscriptionSerializer(data=request.data)
+            if serializer.is_valid():
+                phone_number = request.data.get("mobile_number")
+                self.send_phone_otp(phone_number, totp.now())
+                return Response({"message": "Please verify your mobile to providing otp.",
+                                "secret_key": secret_key,
+                                "mobile_number": phone_number})
+            else:
+                return Response({"message": "", "errors": serializer.errors},
+                                status=status.HTTP_400_BAD_REQUEST)
+        return Response(
+                    {'message': 'You need to provde group name.'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
 
 
 class VerifyOtp(APIView):
@@ -62,19 +67,24 @@ class VerifyOtp(APIView):
         otp = request.data.get('otp')
         totp, secret_key = get_totp(key=request.data.get('secret_key'))
         group_name = GroupName.objects.filter(name=request.data["group_name"]).first()
-        request.data["group_name"] = group_name.id
-        serializer = UserSubscriptionSerializer(data=request.data)
-        if totp.verify(otp) and serializer.is_valid():
-            user = serializer.save()
-            user.is_verified = True
-            user.save()
+        if group_name:
+            request.data["group_name"] = group_name.id
+            serializer = UserSubscriptionSerializer(data=request.data)
+            if totp.verify(otp) and serializer.is_valid():
+                user = serializer.save()
+                user.is_verified = True
+                user.save()
+                return Response(
+                    {'message': 'OTP is verified successfully'}
+                )
             return Response(
-                {'message': 'OTP is verified successfully'}
+                {'message': 'OTP or secret_key is either expired or invalid, please try again'},
+                status=status.HTTP_400_BAD_REQUEST
             )
         return Response(
-            {'message': 'OTP or secret_key is either expired or invalid, please try again'},
-            status=status.HTTP_400_BAD_REQUEST
-        )
+                    {'message': 'You need to provde group name.'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
 
 
 class Unsubscribed(APIView):
@@ -123,7 +133,7 @@ class CreateSchedule(APIView):
 class GetAllPublicSchedule(APIView):
 
     def get(self, request):
-        serializer = PublicScheduleSerializer(ScheduleGroup.objects.all(),
+        serializer = PublicScheduleSerializer(ScheduleGroup.objects.all().order_by("-id"),
                                               many=True)
         return Response({"message": "", "data": serializer.data})
 
