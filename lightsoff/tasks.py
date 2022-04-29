@@ -160,7 +160,7 @@ def send_sms_to_batch(self):
                                           Prefetch("subscriber",
                                                 queryset=Subscriber.objects.filter(is_unsubscribed=False)
                                                             )
-                                                        )
+                                                        ).first()
     tx_id = generate_uniqe_id()
     message = f"There will be a scheduled power cutoff for group {batch_data.schedule.group_name},from {batch_data.schedule.starting_period} to {batch_data.schedule.ending_period}."
     numbers = list(current_qs.values(mobile=F("mobile_number")))
