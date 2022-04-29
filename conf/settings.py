@@ -150,7 +150,7 @@ CELERY_RESULT_BACKEND = env("REDIS_URL")
 SMS_API_USERNAME = env("SMS_API_USERNAME")
 SMS_API_PASSWORD = env("SMS_API_PASSWORD")
 
-CELERY_BEAT_SCHEDULER = 'django_celery_beat.schedulers:DatabaseScheduler'
+CELERYBEAT_SCHEDULER = 'django_celery_beat.schedulers:DatabaseScheduler'
 
 CELERY_TASK_PUBLISH_RETRY = env("SEND_SMS_MAX_RETRY", cast=int)
 
@@ -159,4 +159,3 @@ CRISPY_ALLOWED_TEMPLATE_PACKS = "tailwind"
 CRISPY_TEMPLATE_PACK = "tailwind"
 OTP_NUM_DIGITS = env("OTP_NUM_DIGITS", cast=int)
 OTP_EXPIRE_SECONDS = env("OTP_EXPIRE_SECONDS", cast=int)
-LIGHT_OFF_API_KEY = env("LIGHT_OFF_API_KEY")
