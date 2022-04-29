@@ -8,6 +8,7 @@ from datetime import datetime, timezone
 from django.db.models import Q
 from django.utils import timezone
 from ..utils import get_totp, login_sms_api, send_sms
+from rest_framework_api_key.permissions import HasAPIKey
 
 
 class UserSubscription(APIView):
@@ -29,7 +30,6 @@ class UserSubscription(APIView):
             return False
 
     def post(self, request):
-
         user = Subscriber.objects.filter(mobile_number=request.data["mobile_number"].strip(),
                                          is_unsubscribed=True).first()
         if user:
@@ -39,13 +39,13 @@ class UserSubscription(APIView):
             serializer.save()
             user.is_unsubscribed = False
             user.save()
-            return Response({"message": "Subscribed successfully."})
+            return Response({"message": "Subscribed successfully."},
+                            status=status.HTTP_208_ALREADY_REPORTED)
         totp, secret_key = get_totp()
         group_name = GroupName.objects.filter(name=request.data["group_name"]).first()
         request.data["group_name"] = group_name.id
         serializer = UserSubscriptionSerializer(data=request.data)
         if serializer.is_valid():
-            serializer.save()
             phone_number = request.data.get("mobile_number")
             self.send_phone_otp(phone_number, totp.now())
             return Response({"message": "Please verify your mobile to providing otp.",
@@ -60,25 +60,22 @@ class VerifyOtp(APIView):
 
     def post(self, request):
         otp = request.data.get('otp')
-        phone_number = request.data.get("mobile_number")
-        user = Subscriber.objects.filter(mobile_number=phone_number).first()
-        if user:
-            totp, secret_key = get_totp(key=request.data.get('secret_key'))
-            if totp.verify(otp):
-                user.is_verified = True
-                user.save()
-                return Response(
-                    {'message': 'OTP is verified successfully'}
-                )
+        totp, secret_key = get_totp(key=request.data.get('secret_key'))
+        group_name = GroupName.objects.filter(name=request.data["group_name"]).first()
+        request.data["group_name"] = group_name.id
+        serializer = UserSubscriptionSerializer(data=request.data)
+        if totp.verify(otp) and serializer.is_valid():
+            user = serializer.save()
+            user.is_verified = True
+            user.save()
             return Response(
-                {'message': 'OTP or secret_key is either expired or invalid, please try again'},
-                status=status.HTTP_400_BAD_REQUEST
+                {'message': 'OTP is verified successfully'}
             )
-        else:
-             return Response(
-                {'message': 'Something went wrong.'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
+        return Response(
+            {'message': 'OTP or secret_key is either expired or invalid, please try again'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
 
 class Unsubscribed(APIView):
 
@@ -99,6 +96,7 @@ class Unsubscribed(APIView):
                             status=status.HTTP_404_NOT_FOUND)
 
 class CreateSchedule(APIView):
+    permission_classes = [HasAPIKey]
 
     def post(self, request):
         error_arr = []
@@ -125,7 +123,8 @@ class CreateSchedule(APIView):
 class GetAllPublicSchedule(APIView):
 
     def get(self, request):
-        serializer = PublicScheduleSerializer(data=ScheduleGroup.objects.all())
+        serializer = PublicScheduleSerializer(ScheduleGroup.objects.all(),
+                                              many=True)
         return Response({"message": "", "data": serializer.data})
 
 
@@ -199,6 +198,7 @@ class SchedulesByPlace(APIView):
                             status=status.HTTP_400_BAD_REQUEST)
 
 class PlaceView(APIView):
+    permission_classes = [HasAPIKey]
 
     def post(self, request):
         for gcc_data in request.data:
@@ -222,9 +222,6 @@ class PlaceView(APIView):
                     group_collection.append(group_obj.id)
                 place_obj.groups.set(group_collection)
         return Response({"message": "Successfully inserted."})
-        
-            # return Response({"message": "Provided data is invalid."},
-            #                  status=status.HTTP_400_BAD_REQUEST)
 
 
 class GetAllSubscribedUser(APIView):

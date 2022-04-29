@@ -52,6 +52,7 @@ INSTALLED_APPS = [
     "django_celery_beat",
     "rest_framework",
     "lightsoff.apps.LightsoffConfig",
+    "rest_framework_api_key",
 ]
 
 MIDDLEWARE = [
@@ -150,11 +151,12 @@ SMS_API_USERNAME = env("SMS_API_USERNAME")
 SMS_API_PASSWORD = env("SMS_API_PASSWORD")
 
 CELERY_BEAT_SCHEDULER = 'django_celery_beat.schedulers:DatabaseScheduler'
-NUMBER_OF_PERIOD = 1
-CELERY_TASK_PUBLISH_RETRY = 5
+
+CELERY_TASK_PUBLISH_RETRY = env("SEND_SMS_MAX_RETRY", cast=int)
 
 # django-crispy-forms settings
 CRISPY_ALLOWED_TEMPLATE_PACKS = "tailwind"
 CRISPY_TEMPLATE_PACK = "tailwind"
-OTP_NUM_DIGITS = 6
-OTP_EXPIRE_SECONDS = 300
+OTP_NUM_DIGITS = env("OTP_NUM_DIGITS", cast=int)
+OTP_EXPIRE_SECONDS = env("OTP_EXPIRE_SECONDS", cast=int)
+LIGHT_OFF_API_KEY = env("LIGHT_OFF_API_KEY")
