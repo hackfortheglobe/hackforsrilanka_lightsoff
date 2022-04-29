@@ -1,6 +1,6 @@
 # Hack for Sri Lanka: LightsOff
 
-Last heroku deployment at: [https://hfsl-backend.herokuapp.com/]https://hfsl-backend.herokuapp.com/
+Last heroku deployment at: [https://hfsl-backend.herokuapp.com/](https://hfsl-backend.herokuapp.com/)
 
 
 ## Background
