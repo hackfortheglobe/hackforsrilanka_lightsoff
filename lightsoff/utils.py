@@ -184,7 +184,7 @@ import json
 from requests.structures import CaseInsensitiveDict
 from django.db.models import F
 
-def send_sms(message, numbers, tx_id):
+def send_sms(numbers, message, tx_id):
 
     headers = CaseInsensitiveDict()
     access_token = login_sms_api()
@@ -195,7 +195,7 @@ def send_sms(message, numbers, tx_id):
             "sourceAddress": "hack4globe",
             "message": message,
             "transaction_id": tx_id,
-            "msisdn": numbers
+            "msisdn": [{"mobile": number} for number in numbers]
             }
     resp = requests.post(url, headers=headers, data=json.dumps(data))
     return resp
