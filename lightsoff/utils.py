@@ -191,6 +191,8 @@ def send_sms(numbers, message, tx_id):
     url = "https://e-sms.dialog.lk/api/v1/sms"
     headers["Authorization"] = f"Bearer {access_token}"
     headers["Content-Type"] = "application/json"
+    if type(numbers) == str:
+        numbers = [numbers]
     data = {
             "sourceAddress": "hack4globe",
             "message": message,
