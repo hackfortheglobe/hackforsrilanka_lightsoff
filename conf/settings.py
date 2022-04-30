@@ -32,7 +32,8 @@ environ.Env.read_env(BASE_DIR / ".env")
 DEBUG = env("DEBUG")
 SECRET_KEY = env("SECRET_KEY")
 DOMAIN_NAME = env("DOMAIN_NAME")
-ALLOWED_HOSTS = [DOMAIN_NAME]
+# ALLOWED_HOSTS = [DOMAIN_NAME]
+ALLOWED_HOSTS = ["*"]
 FRONT_END_ORIGIN = env("FRONT_END_ORIGIN", default="http://localhost:3000")
 CORS_ALLOWED_ORIGINS = [FRONT_END_ORIGIN]
 # URL to API endpoint that provides data about power cutoff schedules

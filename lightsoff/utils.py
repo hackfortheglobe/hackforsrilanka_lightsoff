@@ -197,8 +197,7 @@ def send_sms(message, numbers, tx_id):
             "transaction_id": tx_id,
             "msisdn": numbers
             }
-    data = json.dumps(data)
-    resp = requests.post(url, headers=headers, data=data)
+    resp = requests.post(url, headers=headers, data=json.dumps(data))
     return resp
 
 
