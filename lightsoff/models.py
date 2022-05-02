@@ -126,9 +126,6 @@ class Transaction(models.Model):
 
 
 class ScheduleGroup(models.Model):
-    periodic_task = models.ForeignKey(PeriodicTask,
-                                      on_delete=models.CASCADE,
-                                      blank=True)
     starting_period = models.DateTimeField()
     ending_period = models.DateTimeField()
     group_name = models.ForeignKey(GroupName,
@@ -140,8 +137,8 @@ class ScheduleGroup(models.Model):
 
 
 class Place(models.Model):
-    gcc = models.CharField(max_length=150)
-    area = models.CharField(max_length=150)
+    gcc = models.TextField()
+    area = models.TextField()
     groups = models.ManyToManyField(GroupName)
     feeders = ArrayField(models.CharField(max_length=35))
     created_at = models.DateTimeField(auto_now_add=True)
@@ -168,3 +165,8 @@ class Batch(models.Model):
                                       null=True)
     updated_at = models.DateTimeField(auto_now=True,
                                       null=True)
+
+
+class LastProcessedDocument(models.Model):
+    last_processed_id = models.CharField(max_length=150)
+

@@ -8,7 +8,7 @@ from django.db.models import Q
 from django.utils import timezone
 from ..utils import *
 from rest_framework_api_key.permissions import HasAPIKey
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 
 
 class UserSubscription(APIView):
@@ -114,18 +114,27 @@ class CreateSchedule(APIView):
     def post(self, request):
         error_arr = []
         for index, data in enumerate(request.data["schedules"]):
-            group_name = GroupName.objects.filter(name__iexact=data.get("group_name").strip()).first()
-            if not group_name:
-                group_name = GroupName.objects.create(name=data.get("group_name"))
-            request.data["schedules"][index]["group_name"] = group_name.id
-            data["starting_period"] = datetime.strptime(data.get("starting_period"), "%d/%m/%Y %H:%M").strftime('%Y-%m-%d %H:%M:%S')
-            data["ending_period"] = datetime.strptime(data.get("ending_period"), "%d/%m/%Y %H:%M").strftime('%Y-%m-%d %H:%M:%S')
-            serializer = CreateScheduleSerializer(data=data)
-            if serializer.is_valid():
-                serializer.save()
-            else:
-                error_arr.append({"group_name": group_name.name,
-                                  "description": serializer.errors})
+            try:
+                group_name = GroupName.objects.filter(name__iexact=data.get("group").strip()).first()
+                if not group_name:
+                    group_name = GroupName.objects.create(name=data.get("group"))
+                request.data["schedules"][index]["group_name"] = group_name.id
+                data["starting_period"] = data.get("starting_period")
+                data["ending_period"] = data.get("ending_period")
+                serializer = CreateScheduleSerializer(data=data)
+                if serializer.is_valid():
+                    serializer.save()
+                else:
+                    error_arr.append({"group_name": group_name.name,
+                                      "description": serializer.errors})
+            except Exception as e:
+                print("Invalid data", str(e))
+        time = datetime.now(tz=timezone.utc) + timedelta(minutes=1)
+        clock_time = ClockedSchedule.objects.create(clocked_time=time)
+        periodict_task = PeriodicTask.objects.create(clocked=clock_time,
+                                                    one_off=True,
+                                                    task="lightsoff.tasks.send_sms_notification",
+                                                    name=f'send_bulk_sms{clock_time.id}')
         if len(error_arr) == 0:
             return Response({"message": "success", "errors": error_arr})
         else:
@@ -148,7 +157,7 @@ class AllGroupName(APIView):
 
 class AllGCCName(APIView):
     def get(self, request):
-        data = Place.objects.all().values_list("gcc", flat=True).order_by("gcc")
+        data = Place.objects.all().values_list("gcc", flat=True).order_by("gcc").distinct()
         return Response({"message": "", "data": data})
 
 class AllAreaName(APIView):
@@ -215,25 +224,28 @@ class PlaceView(APIView):
 
     def post(self, request):
         for gcc_data in request.data:
-            for area_data in request.data[gcc_data]:
-                place_obj = Place.objects.filter(gcc=gcc_data,
-                                                 area=area_data
-                                                 ).first()
-                if not place_obj:
-                    place_obj = Place.objects.create(gcc=gcc_data,
-                                                     area=area_data,
-                                                     feeders=request.data[gcc_data][area_data]["feeders"])
-                else:
-                    place_obj.area = area_data
-                    place_obj.feeders = request.data[gcc_data][area_data]["feeders"]
-                    place_obj.save()
-                group_collection = []
-                for group_name in request.data[gcc_data][area_data]["groups"]:
-                    group_obj = GroupName.objects.filter(name=group_name).first()
-                    if not group_obj:
-                        group_obj = GroupName.objects.create(name=group_name)
-                    group_collection.append(group_obj.id)
-                place_obj.groups.set(group_collection)
+            try:
+                for area_data in request.data[gcc_data]:
+                    place_obj = Place.objects.filter(gcc=gcc_data,
+                                                     area=area_data
+                                                     ).first()
+                    if not place_obj:
+                        place_obj = Place.objects.create(gcc=gcc_data,
+                                                         area=area_data,
+                                                         feeders=request.data[gcc_data][area_data]["feeders"])
+                    else:
+                        place_obj.area = area_data
+                        place_obj.feeders = request.data[gcc_data][area_data]["feeders"]
+                        place_obj.save()
+                    group_collection = []
+                    for group_name in request.data[gcc_data][area_data]["groups"]:
+                        group_obj = GroupName.objects.filter(name=group_name).first()
+                        if not group_obj:
+                            group_obj = GroupName.objects.create(name=group_name)
+                        group_collection.append(group_obj.id)
+                    place_obj.groups.set(group_collection)
+            except Exception as e:
+                print("Invalid data", str(e))
         return Response({"message": "Successfully inserted."})
 
 

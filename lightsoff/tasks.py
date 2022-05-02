@@ -182,3 +182,55 @@ def send_sms_to_batch(self):
             print("FAILED")
             raise self.retry(countdown=300)
 
+from lightsoff.scraper.scraper import scrape
+import os
+from os.path import exists
+
+
+@app.task(bind=True)
+def scrapper_data(self):
+    DOMAIN_NAME = settings.DOMAIN_NAME
+    place_url = f"{DOMAIN_NAME}/api/create-place/"
+    schedule_url = f"{DOMAIN_NAME}/api/create-schedule/"
+    api_key = settings.LIGHT_OFF_API_KEY
+    base_dir = f"{os.getcwd()}/lightsoff"
+    output_dir = f"{base_dir}/scraper/outputs/"
+    output_place = f"{base_dir}/scraper/hardcoded/places.json"
+    output_schedule = f"{base_dir}/scraper/hardcoded/schedules.json"
+    output_last_id = f"{base_dir}/scraper/outputs/last_processed_document_id.txt"
+
+    last_obj = LastProcessedDocument.objects.all().last()
+    if last_obj:
+        scrape(last_obj.last_processed_id)
+    else:
+        scrape("")
+    file_exists = exists(output_last_id)
+    if file_exists:
+        with open(output_last_id) as f:
+            last_processed_id = f.read()
+        if last_obj:
+            last_obj.last_processed_id = last_processed_id
+            last_obj.save()
+        else:
+            LastProcessedDocument.objects.create(last_processed_id=last_processed_id)
+        headers = {}
+        headers = CaseInsensitiveDict()
+        headers["Content-Type"] = "application/json"
+        headers["Authorization"] = f"Api-Key {api_key}"
+        with open(output_place) as f:
+            place_data = json.load(f)
+        place_data = json.dumps(place_data)
+        res = requests.post(url=place_url, headers=headers, data=place_data)
+        with open(output_schedule) as f:
+            schedule_data = json.load(f)
+        schedule_data = json.dumps(schedule_data)
+        requests.post(url=schedule_url, headers=headers, data=schedule_data)
+        os.remove(output_place)
+        os.remove(output_schedule)
+        os.remove(output_last_id)
+        print("Data successfully inserted.")
+    else:
+        print("Data Already Exists")
+    
+    
+
