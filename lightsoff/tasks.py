@@ -104,7 +104,8 @@ def send_sms_notification(self):
     access_token = login_sms_api()
     headers["Authorization"] = f"Bearer {access_token}"
     headers["Content-Type"] = "application/json"
-    schedule_group = ScheduleGroup.objects.filter(is_run=False)
+    schedule_group = ScheduleGroup.objects.filter(is_run=False,
+                                                  starting_period__gte=datetime.datetime.now(tz=timezone.utc))
     for schedule_data in schedule_group:
         all_sub = Subscriber.objects.filter(group_name=schedule_data.group_name,
                                             is_unsubscribed=False)

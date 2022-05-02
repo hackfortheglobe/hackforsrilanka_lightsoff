@@ -16,7 +16,7 @@ class UserSubscription(APIView):
     def send_phone_otp(self, phone_number, otp):
         tx_id = generate_uniqe_id()
         message = f"Please enter this {otp} to verify your mobile number."
-        resp = send_sms(phone_number, message, tx_id)
+        resp = send_sms([phone_number], message, tx_id)
         if resp.status_code == 200:
             res_data = resp.json()
             tx_data = Transaction.objects.create(campaingn_id=res_data["data"].get("campaignId", None),
@@ -50,7 +50,8 @@ class UserSubscription(APIView):
             serializer = UserSubscriptionSerializer(data=request.data)
             if serializer.is_valid():
                 phone_number = request.data.get("mobile_number")
-                self.send_phone_otp(phone_number, totp.now())
+                numbers = {"mobile": phone_number}
+                self.send_phone_otp(numbers, totp.now())
                 return Response({"message": "Please verify your mobile to providing otp.",
                                 "secret_key": secret_key,
                                 "mobile_number": phone_number})
