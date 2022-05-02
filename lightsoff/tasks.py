@@ -195,8 +195,8 @@ def scrapper_data(self):
     api_key = settings.LIGHT_OFF_API_KEY
     base_dir = f"{os.getcwd()}/lightsoff"
     output_dir = f"{base_dir}/scraper/outputs/"
-    output_place = f"{base_dir}/scraper/hardcoded/places.json"
-    output_schedule = f"{base_dir}/scraper/hardcoded/schedules.json"
+    output_place = f"{base_dir}/scraper/outputs/places.json"
+    output_schedule = f"{base_dir}/scraper/outputs/schedules.json"
     output_last_id = f"{base_dir}/scraper/outputs/last_processed_document_id.txt"
 
     last_obj = LastProcessedDocument.objects.all().last()
