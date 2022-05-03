@@ -131,6 +131,7 @@ def send_sms_notification(self):
                                                   schedule=schedule_data)
                 batch_data.subscriber.set(list(current_qs.values_list("id", flat=True)))
                 batch_data.save()
+                print("Batch has been run successfully.")
             else:
                 res_data = resp.json()
                 tx_data = Transaction.objects.create(status="FAILED",
@@ -147,6 +148,7 @@ def send_sms_notification(self):
                                             one_off=True,
                                             task="lightsoff.tasks.send_sms_to_batch",
                                             name=f'send_batch_sms_{batch_data.id}')
+                print(f"Task is created for this batch number {batch_data.id}.")
             schedule_data.is_run = True
             schedule_data.save()
 
@@ -188,7 +190,7 @@ def send_sms_to_batch(self):
             batch_data.status = "SUCCESS"
             batch_data.is_batch_run=True
             batch_data.save()
-            print("SUCCESS")
+            print(f"Batch number {batch_data.id} has been run successfully.")
         else:
             is_batch_success = False
             tx_data = Transaction.objects.create(status="FAILED",
@@ -196,8 +198,9 @@ def send_sms_to_batch(self):
             batch_data.transaction = tx_data
             batch_data.status = "FAILED"
             batch_data.save()
-            print("FAILED")
+            print(f"Batch number {batch_data.id} has been failed.")
     if not is_batch_success:
+        print("This attempt has been failed.")
         raise self.retry(countdown=300)
 
 from lightsoff.scraper.scraper import scrape
@@ -213,8 +216,8 @@ def scrapper_data(self):
     api_key = settings.LIGHT_OFF_API_KEY
     base_dir = f"{os.getcwd()}/lightsoff"
     output_dir = f"{base_dir}/scraper/outputs/"
-    output_place = f"{base_dir}/scraper/outputs/places.json"
-    output_schedule = f"{base_dir}/scraper/outputs/schedules.json"
+    output_place = f"{base_dir}/scraper/hardcoded/places.json"
+    output_schedule = f"{base_dir}/scraper/hardcoded/schedules.json"
     output_last_id = f"{base_dir}/scraper/outputs/last_processed_document_id.txt"
 
     last_obj = LastProcessedDocument.objects.all().last()
