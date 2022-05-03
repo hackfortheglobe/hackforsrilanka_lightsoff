@@ -59,7 +59,7 @@ class UserSubscription(APIView):
                 return Response({"message": "", "errors": serializer.errors},
                                 status=status.HTTP_400_BAD_REQUEST)
         return Response(
-                    {'message': 'You need to provde group name.'},
+                    {'message': 'You need to provide the group name.'},
                     status=status.HTTP_400_BAD_REQUEST
                 )
 
@@ -129,12 +129,13 @@ class CreateSchedule(APIView):
                                       "description": serializer.errors})
             except Exception as e:
                 print("Invalid data", str(e))
-        time = datetime.now(tz=timezone.utc) + timedelta(minutes=1)
-        clock_time = ClockedSchedule.objects.create(clocked_time=time)
-        periodict_task = PeriodicTask.objects.create(clocked=clock_time,
-                                                    one_off=True,
-                                                    task="lightsoff.tasks.send_sms_notification",
-                                                    name=f'send_bulk_sms{clock_time.id}')
+        if len(request.data["schedules"]) != 0:
+            time = datetime.now(tz=timezone.utc) + timedelta(minutes=1)
+            clock_time = ClockedSchedule.objects.create(clocked_time=time)
+            periodict_task = PeriodicTask.objects.create(clocked=clock_time,
+                                                        one_off=True,
+                                                        task="lightsoff.tasks.send_sms_notification",
+                                                        name=f'send_bulk_sms{clock_time.id}')
         if len(error_arr) == 0:
             return Response({"message": "success", "errors": error_arr})
         else:
@@ -176,9 +177,9 @@ class SchedulesByGroup(APIView):
     def get(self, request, group):
         from_date = request.query_params.get("from_date", None)
         to_date = request.query_params.get("to_date", None)
-        print(from_date, to_date)
         if from_date and to_date:
-            schedule_group = ScheduleGroup.objects.filter(created_at__date__range=[from_date, to_date],
+            schedule_group = ScheduleGroup.objects.filter(starting_period__date__gte=from_date,
+                                                          ending_period__date__lte=to_date,
                                                           group_name__name=group.upper())
         else:
             schedule_group = ScheduleGroup.objects.filter(created_at__date__gte=datetime.now(tz=timezone.utc).today(),
@@ -204,10 +205,11 @@ class SchedulesByPlace(APIView):
                 data = []
                 for schedule_data in schedule_place:
                     if from_date and to_date:
-                        schedule_group = ScheduleGroup.objects.filter(created_at__date__range=[from_date, to_date],
-                                                                  group_name__in=schedule_data.groups.all())
+                        schedule_group = ScheduleGroup.objects.filter(starting_period__date__gte=from_date,
+                                                                      ending_period__date__lte=to_date,
+                                                                      group_name__in=schedule_data.groups.all())
                     else:
-                        schedule_group = ScheduleGroup.objects.filter(created_at__date=datetime.now(tz=timezone.utc).today(),
+                        schedule_group = ScheduleGroup.objects.filter(starting_period__date=datetime.now(tz=timezone.utc).today(),
                                                                       group_name__in=schedule_data.groups.all())
                 serializer = PublicScheduleSerializer(schedule_group,
                                                       many=True)

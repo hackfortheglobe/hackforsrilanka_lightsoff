@@ -147,11 +147,9 @@ import math, random
 def login_sms_api():
     user_credentials = {"username": settings.SMS_API_USERNAME,
                         "password": settings.SMS_API_PASSWORD}
-    pre_token_time = datetime.datetime.now(tz=timezone.utc)
+    now_time = datetime.datetime.now(tz=timezone.utc)
 
-    token = SmsApiAccessToken.objects.filter(created_at__time__gt=pre_token_time,
-                                     expired_at__time__lt=pre_token_time).order_by("-id").first()
-
+    token = SmsApiAccessToken.objects.filter(expired_at__gt=now_time).order_by("-id").first()
     if token:
         print("exists access_token")
         return token.access_token

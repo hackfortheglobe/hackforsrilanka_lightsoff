@@ -120,14 +120,15 @@ def send_sms_notification(self):
             if resp.status_code == 200:
                 res_data = resp.json()
                 tx_data = Transaction.objects.create(campaingn_id=res_data["data"].get("campaignId", None),
-                                           campaingn_cost=res_data["data"].get("campaignCost", None),
-                                           user_id=res_data["data"].get("userId", None),
-                                           status="SUCCESS",
-                                           tx_id=tx_id)
+                                                     campaingn_cost=res_data["data"].get("campaignCost", None),
+                                                     user_id=res_data["data"].get("userId", None),
+                                                     status="SUCCESS",
+                                                     tx_id=tx_id)
                 batch_data = Batch.objects.create(transaction=tx_data,
-                                    status="SUCCESS",
-                                    message=message,
-                                    schedule=schedule_data)
+                                                  status="SUCCESS",
+                                                  is_batch_run=True,
+                                                  message=message,
+                                                  schedule=schedule_data)
                 batch_data.subscriber.set(list(current_qs.values_list("id", flat=True)))
                 batch_data.save()
             else:
@@ -157,12 +158,26 @@ def send_sms_to_batch(self):
     headers["Authorization"] = f"Bearer {access_token}"
     headers["Content-Type"] = "application/json"
     time = datetime.datetime.now(tz=timezone.utc) + timedelta(minutes=5)
-    all_batch_data = Batch.objects.filter(status="FAILED", schedule__starting_period__gte=time).prefetch_related(Prefetch("subscriber",queryset=Subscriber.objects.filter(is_unsubscribed=False)))
+    all_batch_data = Batch.objects.filter(status="FAILED",
+                                          is_batch_run=False,
+                                          schedule__starting_period__gte=time
+                                          ).prefetch_related(
+                                            Prefetch("subscriber",
+                                                     queryset=Subscriber.objects.filter(is_unsubscribed=False)))
+    is_batch_success = True
     for batch_data in all_batch_data:
-        tx_id = generate_uniqe_id()
-        message = f"There will be a scheduled power cutoff for group {batch_data.schedule.group_name},from {batch_data.schedule.starting_period} to {batch_data.schedule.ending_period}."
-        numbers = list(batch_data.subscriber.all().values(mobile=F("mobile_number")))
-        resp = send_sms(numbers, message, tx_id)
+        ## it will call the api until transaction id is unique.
+        while True:
+            tx_id = generate_uniqe_id()
+            message = f"There will be a scheduled power cutoff for group {batch_data.schedule.group_name},from {batch_data.schedule.starting_period} to {batch_data.schedule.ending_period}."
+            numbers = list(batch_data.subscriber.all().values(mobile=F("mobile_number")))
+            resp = send_sms(numbers, message, tx_id)
+            res_data = resp.json()
+            if resp.status_code == 401 and res_data.get("errCode") == 104:
+                Transaction.objects.create(status="FAILED",
+                                           tx_id=tx_id)
+            else:
+                break;
         if resp.status_code == 200:
             tx_data = Transaction.objects.create(campaingn_id=res_data["data"].get("campaignId", None),
                                        campaingn_cost=res_data["data"].get("campaignCost", None),
@@ -171,16 +186,19 @@ def send_sms_to_batch(self):
                                        tx_id=tx_id)
             batch_data.transaction = tx_data
             batch_data.status = "SUCCESS"
+            batch_data.is_batch_run=True
             batch_data.save()
             print("SUCCESS")
         else:
+            is_batch_success = False
             tx_data = Transaction.objects.create(status="FAILED",
                                                  tx_id=tx_id)
             batch_data.transaction = tx_data
             batch_data.status = "FAILED"
             batch_data.save()
             print("FAILED")
-            raise self.retry(countdown=300)
+    if not is_batch_success:
+        raise self.retry(countdown=300)
 
 from lightsoff.scraper.scraper import scrape
 import os
@@ -189,7 +207,7 @@ from os.path import exists
 
 @app.task(bind=True)
 def scrapper_data(self):
-    DOMAIN_NAME = settings.DOMAIN_NAME
+    DOMAIN_NAME = f"https://{settings.DOMAIN_NAME}"
     place_url = f"{DOMAIN_NAME}/api/create-place/"
     schedule_url = f"{DOMAIN_NAME}/api/create-schedule/"
     api_key = settings.LIGHT_OFF_API_KEY

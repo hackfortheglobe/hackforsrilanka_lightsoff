@@ -161,6 +161,7 @@ class Batch(models.Model):
     message = models.TextField()
     schedule = models.ForeignKey(ScheduleGroup,
                                  on_delete=models.CASCADE)
+    is_batch_run = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True,
                                       null=True)
     updated_at = models.DateTimeField(auto_now=True,
