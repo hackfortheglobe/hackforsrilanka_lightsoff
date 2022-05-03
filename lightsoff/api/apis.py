@@ -32,6 +32,11 @@ class UserSubscription(APIView):
             return False
 
     def post(self, request):
+        new_user = Subscriber.objects.filter(mobile_number=request.data["mobile_number"].strip(),
+                                             is_unsubscribed=False).first()
+        if new_user:
+            return Response({"message":"", "errors": "User already exists."},
+                             status=status.HTTP_409_CONFLICT)
         user = Subscriber.objects.filter(mobile_number=request.data["mobile_number"].strip(),
                                          is_unsubscribed=True).first()
         if user:
