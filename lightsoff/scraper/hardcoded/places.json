@@ -56,16 +56,6 @@
                 "3"
             ]
         },
-        "": {
-            "groups": [
-                "K",
-                "D"
-            ],
-            "feeders": [
-                "3",
-                "6"
-            ]
-        },
         "Batapola Road": {
             "groups": [
                 "D"
@@ -3844,16 +3834,6 @@
                 "6"
             ]
         },
-        "": {
-            "groups": [
-                "F",
-                "B"
-            ],
-            "feeders": [
-                "3",
-                "8"
-            ]
-        },
         "Negrodarama Road": {
             "groups": [
                 "B"
@@ -6955,16 +6935,6 @@
                 "10"
             ]
         },
-        "": {
-            "groups": [
-                "K",
-                "G"
-            ],
-            "feeders": [
-                "8",
-                "10"
-            ]
-        },
         "Main Street": {
             "groups": [
                 "G"
@@ -7249,14 +7219,6 @@
             ],
             "feeders": [
                 "2"
-            ]
-        },
-        "": {
-            "groups": [
-                "B"
-            ],
-            "feeders": [
-                "9"
             ]
         },
         "Malamulla Road": {
@@ -12045,18 +12007,6 @@
                 "3"
             ]
         },
-        "": {
-            "groups": [
-                "F",
-                "E",
-                "K"
-            ],
-            "feeders": [
-                "6",
-                "5",
-                "7"
-            ]
-        },
         "Matara Road From Sambodiya To Unawatuna Cement Factory": {
             "groups": [
                 "E"
@@ -15319,134 +15269,6 @@
             ]
         }
     },
-    "1376": {},
-    "82": {},
-    "1547": {},
-    "43": {},
-    "1484": {},
-    "1654": {},
-    "1473": {},
-    "113-F1": {},
-    "1623": {},
-    "1408": {},
-    "1537": {},
-    "nan": {},
-    "66": {
-        "THE GOVERNMENT PRINTERSGOVERNMENT PRESS": {
-            "groups": [
-                "L"
-            ],
-            "feeders": [
-                "4270000279"
-            ]
-        },
-        "BASELINE ROAD": {
-            "groups": [
-                "L"
-            ],
-            "feeders": [
-                "4270000279"
-            ]
-        }
-    },
-    "63": {
-        "MOOSAJEES LTD205": {
-            "groups": [
-                "L"
-            ],
-            "feeders": [
-                "270001085"
-            ]
-        },
-        "VYSTWYKE ROAD": {
-            "groups": [
-                "L"
-            ],
-            "feeders": [
-                "270001085"
-            ]
-        }
-    },
-    "1279": {
-        "THE SECRETARY TO THE PRIME MINISTERNO:58": {
-            "groups": [
-                "L"
-            ],
-            "feeders": [
-                "170001318"
-            ]
-        },
-        "SRIMATH URNAST DE SILVA MAWATHACOLOMBO 07.": {
-            "groups": [
-                "L"
-            ],
-            "feeders": [
-                "170001318"
-            ]
-        }
-    },
-    "1681": {
-        "LOTUS HOLDINGS (PVT) LTD.NO. 300": {
-            "groups": [
-                "L"
-            ],
-            "feeders": [
-                "470003677"
-            ]
-        },
-        "HIGH LEVEL ROAD": {
-            "groups": [
-                "L"
-            ],
-            "feeders": [
-                "470003677"
-            ]
-        },
-        "KIRULAPONE": {
-            "groups": [
-                "L"
-            ],
-            "feeders": [
-                "470003677"
-            ]
-        }
-    },
-    "702": {
-        "MANAGER ENGINEERING MAINTENANCEDIALOG TELECOM (PVT) LTD210/1": {
-            "groups": [
-                "L"
-            ],
-            "feeders": [
-                "370009797"
-            ]
-        },
-        "SRI DHARMARAMA MAWATHA": {
-            "groups": [
-                "L"
-            ],
-            "feeders": [
-                "370009797"
-            ]
-        }
-    },
-    "1059": {
-        "M/S RICHARD PERIS LTD69": {
-            "groups": [
-                "L"
-            ],
-            "feeders": [
-                "270001352"
-            ]
-        },
-        "HYDE PARK CORNER": {
-            "groups": [
-                "L"
-            ],
-            "feeders": [
-                "270001352"
-            ]
-        }
-    },
     "Ampara": {
         "Galmaduwa": {
             "groups": [
@@ -18055,14 +17877,6 @@
                 "3"
             ]
         },
-        "": {
-            "groups": [
-                "W"
-            ],
-            "feeders": [
-                "10"
-            ]
-        },
         "Lewis Roadace": {
             "groups": [
                 "W"
@@ -18217,14 +18031,6 @@
                 "3"
             ]
         },
-        "96 MP": {
-            "groups": [
-                "P"
-            ],
-            "feeders": [
-                "3"
-            ]
-        },
         "Ganthalawa": {
             "groups": [
                 "P"
@@ -18242,14 +18048,6 @@
             ]
         },
         "Thissapuara": {
-            "groups": [
-                "P"
-            ],
-            "feeders": [
-                "3"
-            ]
-        },
-        "94 MP": {
             "groups": [
                 "P"
             ],
@@ -18443,18 +18241,6 @@
             ],
             "feeders": [
                 "2"
-            ]
-        },
-        "": {
-            "groups": [
-                "T",
-                "V",
-                "S"
-            ],
-            "feeders": [
-                "3",
-                "5",
-                "4"
             ]
         },
         "Biyagama Road": {
@@ -19801,18 +19587,6 @@
                 "2"
             ]
         },
-        "": {
-            "groups": [
-                "Q",
-                "V",
-                "W"
-            ],
-            "feeders": [
-                "3",
-                "9",
-                "5"
-            ]
-        },
         "M.J.C. Fernando Mw": {
             "groups": [
                 "Q"
@@ -20535,18 +20309,6 @@
             ],
             "feeders": [
                 "9"
-            ]
-        },
-        "": {
-            "groups": [
-                "V",
-                "S",
-                "W"
-            ],
-            "feeders": [
-                "3",
-                "8",
-                "11"
             ]
         },
         "Kirimetiyagara Church Road": {
@@ -21539,14 +21301,6 @@
             ],
             "feeders": [
                 "9"
-            ]
-        },
-        "": {
-            "groups": [
-                "R"
-            ],
-            "feeders": [
-                "3"
             ]
         },
         "Kandewatta Road": {
@@ -24169,14 +23923,6 @@
                 "3"
             ]
         },
-        "": {
-            "groups": [
-                "S"
-            ],
-            "feeders": [
-                "4"
-            ]
-        },
         "Peralanda": {
             "groups": [
                 "S"
@@ -25379,14 +25125,6 @@
                 "7"
             ]
         },
-        "": {
-            "groups": [
-                "Q"
-            ],
-            "feeders": [
-                "8"
-            ]
-        },
         "Kolambage Mw": {
             "groups": [
                 "Q"
@@ -26509,17 +26247,6 @@
             ],
             "feeders": [
                 "10"
-            ]
-        },
-        "": {
-            "groups": [
-                "T",
-                "U"
-            ],
-            "feeders": [
-                "3",
-                "1",
-                "8"
             ]
         },
         "Global City": {
@@ -31316,14 +31043,6 @@
             ],
             "feeders": [
                 "6"
-            ]
-        },
-        "": {
-            "groups": [
-                "W"
-            ],
-            "feeders": [
-                "7"
             ]
         },
         "Dehiwala Road From Boralasgamu Wewa To Bellanthota Junction Via Boralesgamuwa Junction": {
