@@ -9,13 +9,16 @@
     The outputs will be saved in the outputs folder if a new document id is found.
 '''
 
+import os
 from lxml import html
 import re
 import requests
 import shutil
 
-hardcodedFolder = './hardcoded/'
-outputsFolder = './outputs/'
+base_dir = f"{os.getcwd()}/lightsoff"
+scraperFolder = f"{base_dir}/scraper/"
+hardcodedFolder = f"{scraperFolder}/hardcoded/"
+outputsFolder = f"{scraperFolder}/outputs/"
 lastProcessedFileName = 'last_processed_document_id.txt'
 placesFileName = 'places.json'
 schedulesFileName = 'schedules.json'
