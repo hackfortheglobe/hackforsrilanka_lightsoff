@@ -109,6 +109,9 @@ def send_sms_notification(self):
     for schedule_data in schedule_group:
         all_sub = Subscriber.objects.filter(group_name=schedule_data.group_name,
                                             is_unsubscribed=False)
+        if len(all_sub) == 0:
+            print(f"there is not subscriber for this group name {schedule_data.group_name.name}")
+            return None
         paginator = Paginator(all_sub, 100)
         for page_no in paginator.page_range:
             current_page = paginator.get_page(page_no)
@@ -178,6 +181,7 @@ def send_sms_to_batch(self):
             if resp.status_code == 401 and res_data.get("errCode") == 104:
                 Transaction.objects.create(status="FAILED",
                                            tx_id=tx_id)
+                print("Transaction id already exists.")
             else:
                 break;
         if resp.status_code == 200:
