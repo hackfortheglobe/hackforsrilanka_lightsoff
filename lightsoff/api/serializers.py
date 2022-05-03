@@ -26,19 +26,6 @@ class CreateScheduleSerializer(serializers.ModelSerializer):
         model = ScheduleGroup
         fields = '__all__'
 
-    @transaction.atomic
-    def create(self, validated_data):
-        obj = ScheduleGroup(**validated_data)
-        time = datetime.now(tz=timezone.utc) + timedelta(minutes=1)
-        clock_time = ClockedSchedule.objects.create(clocked_time=time)
-        periodict_task = PeriodicTask.objects.create(clocked=clock_time,
-                                                    one_off=True,
-                                                    task="lightsoff.tasks.send_sms_notification",
-                                                    name=f'send_bulk_sms{clock_time.id}')
-        obj.periodic_task = periodict_task
-        obj.save()
-        return obj
-
 class PublicScheduleSerializer(serializers.ModelSerializer):
     group_name = serializers.CharField(source='group_name.name')
 
