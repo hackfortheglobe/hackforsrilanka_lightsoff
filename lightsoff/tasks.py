@@ -111,7 +111,7 @@ def send_sms_notification(self):
                                             is_unsubscribed=False)
         if len(all_sub) == 0:
             print(f"there is not subscriber for this group name {schedule_data.group_name.name}")
-            return None
+            continue
         paginator = Paginator(all_sub, 100)
         for page_no in paginator.page_range:
             current_page = paginator.get_page(page_no)
