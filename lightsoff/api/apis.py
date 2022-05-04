@@ -64,7 +64,7 @@ class UserSubscription(APIView):
                 return Response({"message": "", "errors": serializer.errors},
                                 status=status.HTTP_400_BAD_REQUEST)
         return Response(
-                    {'message': 'You need to provide the group name.'},
+                    {'message': 'You have to provide the group name.'},
                     status=status.HTTP_400_BAD_REQUEST
                 )
 
@@ -86,11 +86,11 @@ class VerifyOtp(APIView):
                     {'message': 'OTP is verified successfully'}
                 )
             return Response(
-                {'message': 'OTP or secret_key is either expired or invalid, please try again'},
+                {'message': 'OTP is either expired or invalid, please try again'},
                 status=status.HTTP_400_BAD_REQUEST
             )
         return Response(
-                    {'message': 'You need to provde group name.'},
+                    {'message': 'You have to provide group name.'},
                     status=status.HTTP_400_BAD_REQUEST
                 )
 
