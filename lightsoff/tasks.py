@@ -112,13 +112,14 @@ def send_sms_notification(self):
         if len(all_sub) == 0:
             print(f"there is not subscriber for this group name {schedule_data.group_name.name}")
             continue
-        paginator = Paginator(all_sub, 100)
+        sub_user = all_sub.values(mobile=F("mobile_number"))
+        paginator = Paginator(sub_user, 100)
         for page_no in paginator.page_range:
             current_page = paginator.get_page(page_no)
             current_qs = current_page.object_list
             tx_id = generate_uniqe_id()
             message = f"There will be a scheduled power cutoff for group {schedule_data.group_name},from {schedule_data.starting_period} to {schedule_data.ending_period}."
-            numbers = list(current_qs.values(mobile=F("mobile_number")))
+            numbers = list(current_qs)
             resp = send_sms(numbers, message, tx_id)
             if resp.status_code == 200:
                 res_data = resp.json()
