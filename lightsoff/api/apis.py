@@ -130,7 +130,7 @@ class VerifyOtp(APIView):
                 user.is_verified = True
                 user.save()
                 return Response(
-                    {'message': 'OTP is verified successfully'}
+                    {'message': 'OTP is verified successfully and your subscription has been done.'}
                 )
             return Response(
                 {'message': 'OTP is either expired or invalid, please try again'},
