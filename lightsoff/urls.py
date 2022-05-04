@@ -7,6 +7,7 @@ app_name = "lightsoff"
 urlpatterns = [
     path("api/unsubscribe/", Unsubscribed.as_view(), name="unsubscribe"),
     path("api/subscribe/", UserSubscription.as_view(), name="subscribe"),
+    path("api/change-group/", ChangeSubscriberGroup.as_view(), name="change_group"),
     path("api/verify-otp/", VerifyOtp.as_view(), name="verify_otp"),
     path("api/create-schedule/", CreateSchedule.as_view(), name="create_schedule"),
     path("api/schedule-data/", GetAllPublicSchedule.as_view(), name="schedule_data"),

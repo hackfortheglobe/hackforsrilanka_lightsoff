@@ -11,7 +11,7 @@ from rest_framework_api_key.permissions import HasAPIKey
 from datetime import datetime, timezone, timedelta
 
 
-class UserSubscription(APIView):
+class SendOtp:
 
     def send_phone_otp(self, phone_number, otp):
         tx_id = generate_uniqe_id()
@@ -31,12 +31,17 @@ class UserSubscription(APIView):
                                                  tx_id=tx_id)
             return False
 
+
+class UserSubscription(APIView, SendOtp):
+
     def post(self, request):
         new_user = Subscriber.objects.filter(mobile_number=request.data["mobile_number"].strip(),
                                              is_unsubscribed=False).first()
+        group_name = request.data["group_name"]
         if new_user:
-            return Response({"message":"", "errors": "User already exists."},
-                             status=status.HTTP_409_CONFLICT)
+            return Response({"message":"", "errors": f"You are already subscribed with group '{new_user.group_name}', " \
+                                                      f"do you want to subscribe with a different group '{group_name}' ?"
+                             },status=status.HTTP_409_CONFLICT)
         user = Subscriber.objects.filter(mobile_number=request.data["mobile_number"].strip(),
                                          is_unsubscribed=True).first()
         if user:
@@ -69,6 +74,39 @@ class UserSubscription(APIView):
                 )
 
 
+class ChangeSubscriberGroup(APIView, SendOtp):
+
+    def post(self, request):
+        new_user = Subscriber.objects.filter(mobile_number=request.data["mobile_number"].strip(),
+                                             is_unsubscribed=False).first()
+        group_name = request.data["group_name"]
+        if not new_user:
+            return Response({"message":"", "errors": "User does not exist."})
+
+        group_name = GroupName.objects.filter(name=request.data["group_name"]).first()
+        if group_name:
+            request.data["group_name"] = group_name.id
+        phone_number = request.data.get("mobile_number")
+        numbers = {"mobile": phone_number}
+        totp, secret_key = get_totp()
+        self.send_phone_otp(numbers, totp.now())
+        if new_user:
+            serializer = UserSubscriptionSerializer(data=request.data,
+                                                    instance=new_user,
+                                                    partial=True)
+            if serializer.is_valid():
+                return Response({"message": "Please verify your mobile to providing otp.",
+                                "secret_key": secret_key,
+                                "mobile_number": phone_number})
+            else:
+                return Response({"message": "", "errors": serializer.errors},
+                                status=status.HTTP_400_BAD_REQUEST)
+        return Response(
+                    {'message': 'You have to provide the group name.'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+
 class VerifyOtp(APIView):
 
     def post(self, request):
@@ -77,8 +115,17 @@ class VerifyOtp(APIView):
         group_name = GroupName.objects.filter(name=request.data["group_name"]).first()
         if group_name:
             request.data["group_name"] = group_name.id
+            new_user = Subscriber.objects.filter(mobile_number=request.data["mobile_number"].strip(),
+                                                     is_unsubscribed=False).first()
+            if totp.verify(otp):
+                if new_user:
+                    new_user.delete()
+            else:
+                return Response(
+                {'message': 'OTP is either expired or invalid, please try again'},
+                status=status.HTTP_400_BAD_REQUEST)
             serializer = UserSubscriptionSerializer(data=request.data)
-            if totp.verify(otp) and serializer.is_valid():
+            if serializer.is_valid():
                 user = serializer.save()
                 user.is_verified = True
                 user.save()
