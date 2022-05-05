@@ -41,3 +41,9 @@ class AdminBatch(admin.ModelAdmin):
 	readonly_fields = ('updated_at', 'created_at', )
 
 admin.site.register(Batch, AdminBatch)
+
+class AdminSuburbPlace(admin.ModelAdmin):
+	list_display = ("id", "suburb", "gss", "area")
+
+admin.site.register(SuburbPlace, AdminSuburbPlace)
+

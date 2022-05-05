@@ -194,7 +194,7 @@ def send_sms(numbers, message, tx_id):
     headers["Authorization"] = f"Bearer {access_token}"
     headers["Content-Type"] = "application/json"
     data = {
-            "sourceAddress": "Ekata",
+            "sourceAddress": settings.SMS_MASK_NAME,
             "message": message,
             "transaction_id": tx_id,
             "msisdn": numbers

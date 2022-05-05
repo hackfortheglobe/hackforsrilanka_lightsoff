@@ -145,11 +145,11 @@ class VerifyOtp(APIView):
 class Unsubscribed(APIView):
 
     def post(self, request):
-        data["is_unsubscribed"] = True
+        request.data["is_unsubscribed"] = True
         user = Subscriber.objects.filter(mobile_number=request.data["mobile_number"].strip()).first()
         if user:
             serializer = UnsubscribedSerializer(instance=user,
-                                                data=data,
+                                                data=request.data,
                                                 partial=True)
             if serializer.is_valid():
                 serializer.save()
@@ -241,7 +241,7 @@ class SchedulesByGroup(APIView):
         return Response({"message": "", "data": serializer.data})
 
 
-class SchedulesByPlace(APIView):
+class SearchSchedulesByPlace(APIView):
 
     def get(self, request):
         area = request.query_params.get("area", None)
@@ -277,22 +277,27 @@ class PlaceView(APIView):
     permission_classes = [HasAPIKey]
 
     def post(self, request):
-        for gcc_data in request.data:
+        for gss_data in request.data:
             try:
-                for area_data in request.data[gcc_data]:
-                    place_obj = Place.objects.filter(gss=gcc_data,
+                for area_data in request.data[gss_data]:
+                    suburb_data = SuburbPlace.objects.filter(gss=gss_data).first()
+                    suburb = ""
+                    if suburb_data:
+                        suburb = suburb_data.suburb
+                    place_obj = Place.objects.filter(gss=gss_data,
                                                      area=area_data
                                                      ).first()
                     if not place_obj:
-                        place_obj = Place.objects.create(gss=gcc_data,
+                        place_obj = Place.objects.create(gss=gss_data,
+                                                         suburb=suburb,
                                                          area=area_data,
-                                                         feeders=request.data[gcc_data][area_data]["feeders"])
+                                                         feeders=request.data[gss_data][area_data]["feeders"])
                     else:
                         place_obj.area = area_data
-                        place_obj.feeders = request.data[gcc_data][area_data]["feeders"]
+                        place_obj.feeders = request.data[gss_data][area_data]["feeders"]
                         place_obj.save()
                     group_collection = []
-                    for group_name in request.data[gcc_data][area_data]["groups"]:
+                    for group_name in request.data[gss_data][area_data]["groups"]:
                         group_obj = GroupName.objects.filter(name=group_name).first()
                         if not group_obj:
                             group_obj = GroupName.objects.create(name=group_name)
@@ -308,4 +313,18 @@ class GetAllSubscribedUser(APIView):
         user_data = Subscriber.objects.all().order_by("-id")
         serializer = UserSubscriptionSerializer(user_data, many=True)
         return Response({"message": "", "data": serializer.data})
+
+
+class SearchScheduleBySuburb(APIView):
+    def get(self, request):
+        suburb = request.query_params.get("suburb", None)
+        if suburb:
+            suburb_data = SuburbPlace.objects.filter(suburb__iexact=suburb).order_by("gss")
+            serializer = SuburbSerializer(suburb_data, many=True)
+            return Response({"message":"", "data": serializer.data})
+        else:
+            return Response({"message": "",
+                             "errors": "Suburb parameter is required."},
+                            status=status.HTTP_400_BAD_REQUEST)
+
 

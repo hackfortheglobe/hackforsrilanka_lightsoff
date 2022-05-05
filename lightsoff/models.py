@@ -140,6 +140,7 @@ class ScheduleGroup(models.Model):
 
 
 class Place(models.Model):
+    suburb = models.TextField(blank=True, null=True)
     gss = models.TextField()
     area = models.TextField()
     groups = models.ManyToManyField(GroupName)
@@ -173,4 +174,12 @@ class Batch(models.Model):
 
 class LastProcessedDocument(models.Model):
     last_processed_id = models.CharField(max_length=150)
+
+
+class SuburbPlace(models.Model):
+    suburb = models.TextField()
+    gss = models.TextField()
+    area = models.TextField()
+
+
 

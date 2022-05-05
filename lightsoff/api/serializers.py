@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from ..models import ScheduleGroup, Place, Subscriber
+from ..models import ScheduleGroup, Place, Subscriber, SuburbPlace
 from django_celery_beat.models import PeriodicTask, ClockedSchedule
 from django.db import transaction 
 from datetime import datetime, timedelta
@@ -39,4 +39,9 @@ class CreatePlaceSerializer(serializers.ModelSerializer):
         model = Place
         fields = '__all__'
 
+
+class SuburbSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = SuburbPlace
+        fields = '__all__'
 
