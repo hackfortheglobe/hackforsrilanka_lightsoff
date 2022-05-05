@@ -36,8 +36,8 @@ python-multipart = "0.0.5"
 pytz = "2021.3"
 ghostscript = "0.7"
 django-jazzmin = "^2.5.0"
-"pdfminer.six" = "^20220319"
 urllib3 = "^1.26.9"
+pdfminer = "^20191125"
 
 [tool.poetry.dev-dependencies]
 black = {version = "^22.3.0", allow-prereleases = true}
