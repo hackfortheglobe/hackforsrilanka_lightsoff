@@ -11,6 +11,9 @@ from .models import SmsApiAccessToken, Transaction
 from datetime import timezone, timedelta
 import pyotp
 import math, random
+from pytz import timezone as pytz_timezones
+
+local_time = pytz_timezones(settings.TIME_ZONE)
 
 # def commit_response_to_db_or_false(response, group, date):
 #     """Stores a hash of a request to the database.
@@ -144,10 +147,11 @@ import math, random
 # import timezone
 
 
+
 def login_sms_api():
     user_credentials = {"username": settings.SMS_API_USERNAME,
                         "password": settings.SMS_API_PASSWORD}
-    now_time = datetime.datetime.now(tz=timezone.utc)
+    now_time = datetime.datetime.now(tz=local_time)
 
     token = SmsApiAccessToken.objects.filter(expired_at__gt=now_time).order_by("-id").first()
     if token:
@@ -157,7 +161,7 @@ def login_sms_api():
         header = {'Content-Type: application/json'}
         res_data = requests.post("https://e-sms.dialog.lk/api/v1/login",
                                  data=user_credentials)
-        expired_token_time = datetime.datetime.now(tz=timezone.utc) + timedelta(hours=11, minutes=50)
+        expired_token_time = datetime.datetime.now(tz=local_time) + timedelta(hours=11, minutes=50)
         if res_data.status_code == 200:
             if res_data.json().get("errCode") == '':
                 data = res_data.json()
@@ -208,3 +212,5 @@ def generate_uniqe_id():
         tx_id = int(tx_id)
         if not Transaction.objects.filter(tx_id=tx_id).first():
             return tx_id
+
+

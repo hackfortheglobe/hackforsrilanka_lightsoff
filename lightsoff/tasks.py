@@ -99,13 +99,16 @@ from django.db.models import F
 
 @app.task(bind=True)
 def send_sms_notification(self):
+
+    link = f"https://{settings.DOMAIN_NAME}/api/unsubscribe/"
     url = "https://e-sms.dialog.lk/api/v1/sms"
     headers = CaseInsensitiveDict()
     access_token = login_sms_api()
     headers["Authorization"] = f"Bearer {access_token}"
     headers["Content-Type"] = "application/json"
     schedule_group = ScheduleGroup.objects.filter(is_run=False,
-                                                  starting_period__gte=datetime.datetime.now(tz=timezone.utc))
+                                                  starting_period__gte=datetime.datetime.now(tz=local_time)
+                                                  ).select_related()
     for schedule_data in schedule_group:
         all_sub = Subscriber.objects.filter(group_name=schedule_data.group_name,
                                             is_unsubscribed=False)
@@ -118,7 +121,10 @@ def send_sms_notification(self):
             current_page = paginator.get_page(page_no)
             current_qs = current_page.object_list
             tx_id = generate_uniqe_id()
-            message = f"There will be a scheduled power cutoff for group {schedule_data.group_name},from {schedule_data.starting_period} to {schedule_data.ending_period}."
+            from_date = schedule_data.starting_period.strftime('%b %-dth')
+            from_time = schedule_data.starting_period.strftime('%I:%S %p')
+            to_time = schedule_data.ending_period.strftime('%I:%S %p')
+            message = f"{from_date} from {from_time} to {from_time} [Group {schedule_data.group_name.name} power cut schedule].To unsubscribe go to {link}"
             numbers = list(current_qs)
             resp = send_sms(numbers, message, tx_id)
             if resp.status_code == 200:
@@ -146,7 +152,7 @@ def send_sms_notification(self):
                                     schedule=schedule_data)
                 batch_data.subscriber.set(list(current_qs.values_list("id", flat=True)))
                 batch_data.save()
-                time = datetime.datetime.now(tz=timezone.utc) + timedelta(minutes=5)
+                time = datetime.datetime.now(tz=local_time) + timedelta(minutes=5)
                 clock_time = ClockedSchedule.objects.create(clocked_time=time)
                 PeriodicTask.objects.create(clocked=clock_time,
                                             one_off=True,
@@ -158,12 +164,13 @@ def send_sms_notification(self):
 
 @app.task(bind=True, max_retries=settings.CELERY_TASK_PUBLISH_RETRY)
 def send_sms_to_batch(self):
+    link = f"https://{settings.DOMAIN_NAME}/api/unsubscribe/"
     url = "https://e-sms.dialog.lk/api/v1/sms"
     headers = CaseInsensitiveDict()
     access_token = login_sms_api()
     headers["Authorization"] = f"Bearer {access_token}"
     headers["Content-Type"] = "application/json"
-    time = datetime.datetime.now(tz=timezone.utc) + timedelta(minutes=5)
+    time = datetime.datetime.now(tz=local_time) + timedelta(minutes=5)
     all_batch_data = Batch.objects.filter(status="FAILED",
                                           is_batch_run=False,
                                           schedule__starting_period__gte=time
@@ -173,9 +180,14 @@ def send_sms_to_batch(self):
     is_batch_success = True
     for batch_data in all_batch_data:
         ## it will call the api until transaction id is unique.
+        if batch_data.is_batch_run:
+            continue
+        from_date = batch_data.schedule.starting_period.strftime('%b %-dth')
+        from_time = batch_data.schedule.starting_period.strftime('%I:%S %p')
+        to_time = batch_data.schedule.ending_period.strftime('%I:%S %p')
         while True:
             tx_id = generate_uniqe_id()
-            message = f"There will be a scheduled power cutoff for group {batch_data.schedule.group_name},from {batch_data.schedule.starting_period} to {batch_data.schedule.ending_period}."
+            message = f"{from_date} from {from_time} to {from_time} [Group {batch_data.schedule.group_name} power cut schedule].To unsubscribe go to {link}"
             numbers = list(batch_data.subscriber.all().values(mobile=F("mobile_number")))
             resp = send_sms(numbers, message, tx_id)
             res_data = resp.json()

@@ -121,6 +121,9 @@ class Transaction(models.Model):
     status = models.CharField(choices=TX_STATUS,
                               max_length=10,
                               null=True)
+    created_at = models.DateTimeField(auto_now_add=True,
+                                      blank=True,
+                                      null=True)
 
 
 
@@ -137,7 +140,7 @@ class ScheduleGroup(models.Model):
 
 
 class Place(models.Model):
-    gcc = models.TextField()
+    gss = models.TextField()
     area = models.TextField()
     groups = models.ManyToManyField(GroupName)
     feeders = ArrayField(models.CharField(max_length=35))

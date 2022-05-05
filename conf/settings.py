@@ -122,7 +122,7 @@ AUTH_PASSWORD_VALIDATORS = [
 LANGUAGE_CODE = "en-lk"
 TIME_ZONE = "Asia/Colombo"
 USE_I18N = True
-USE_TZ = True
+USE_TZ = False
 
 # Static files
 STATIC_ROOT = BASE_DIR / "staticfiles"

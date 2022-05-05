@@ -182,7 +182,7 @@ class CreateSchedule(APIView):
             except Exception as e:
                 print("Invalid data", str(e))
         if len(request.data["schedules"]) != 0:
-            time = datetime.now(tz=timezone.utc) + timedelta(minutes=1)
+            time = datetime.now(tz=local_time) + timedelta(minutes=1)
             clock_time = ClockedSchedule.objects.create(clocked_time=time)
             periodict_task = PeriodicTask.objects.create(clocked=clock_time,
                                                         one_off=True,
@@ -210,18 +210,18 @@ class AllGroupName(APIView):
 
 class AllGCCName(APIView):
     def get(self, request):
-        data = Place.objects.all().values_list("gcc", flat=True).order_by("gcc").distinct()
+        data = Place.objects.all().values_list("gss", flat=True).order_by("gss").distinct()
         return Response({"message": "", "data": data})
 
 class AllAreaName(APIView):
     def get(self, request):
-        gcc = request.query_params.get('gcc')
-        if gcc:
-            data = Place.objects.filter(gcc=gcc).values_list("area", flat=True).order_by("area")
+        gss = request.query_params.get('gss')
+        if gss:
+            data = Place.objects.filter(gss=gss).values_list("area", flat=True).order_by("area")
             return Response({"message": "", "data": data})
         else:
             return Response({"message": "",
-                             "errors": "gcc parameter is required."},
+                             "errors": "gss parameter is required."},
                             status=status.HTTP_400_BAD_REQUEST)
 
 class SchedulesByGroup(APIView):
@@ -234,7 +234,7 @@ class SchedulesByGroup(APIView):
                                                           ending_period__date__lte=to_date,
                                                           group_name__name=group.upper())
         else:
-            schedule_group = ScheduleGroup.objects.filter(created_at__date__gte=datetime.now(tz=timezone.utc).today(),
+            schedule_group = ScheduleGroup.objects.filter(created_at__date__gte=datetime.now(tz=local_time).today(),
                                                           group_name__name=group.upper())
         serializer = PublicScheduleSerializer(schedule_group,
                                               many=True)
@@ -250,9 +250,9 @@ class SchedulesByPlace(APIView):
             from_date = request.query_params.get("from_date", None)
             to_date = request.query_params.get("to_date", None)
             if from_date and to_date:
-                schedule_place = Place.objects.filter(gcc=district, area=area)
+                schedule_place = Place.objects.filter(gss=district, area=area)
             else:
-                schedule_place = Place.objects.filter(gcc=district, area=area)
+                schedule_place = Place.objects.filter(gss=district, area=area)
             if len(schedule_place) != 0:
                 data = []
                 for schedule_data in schedule_place:
@@ -261,7 +261,7 @@ class SchedulesByPlace(APIView):
                                                                       ending_period__date__lte=to_date,
                                                                       group_name__in=schedule_data.groups.all())
                     else:
-                        schedule_group = ScheduleGroup.objects.filter(starting_period__date=datetime.now(tz=timezone.utc).today(),
+                        schedule_group = ScheduleGroup.objects.filter(starting_period__date=datetime.now(tz=local_time).today(),
                                                                       group_name__in=schedule_data.groups.all())
                 serializer = PublicScheduleSerializer(schedule_group,
                                                       many=True)
@@ -280,11 +280,11 @@ class PlaceView(APIView):
         for gcc_data in request.data:
             try:
                 for area_data in request.data[gcc_data]:
-                    place_obj = Place.objects.filter(gcc=gcc_data,
+                    place_obj = Place.objects.filter(gss=gcc_data,
                                                      area=area_data
                                                      ).first()
                     if not place_obj:
-                        place_obj = Place.objects.create(gcc=gcc_data,
+                        place_obj = Place.objects.create(gss=gcc_data,
                                                          area=area_data,
                                                          feeders=request.data[gcc_data][area_data]["feeders"])
                     else:
