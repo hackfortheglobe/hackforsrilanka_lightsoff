@@ -100,7 +100,7 @@ from django.db.models import F
 @app.task(bind=True)
 def send_sms_notification(self):
 
-    link = f"https://{settings.DOMAIN_NAME}/api/unsubscribe/"
+    link = f"https://ekata.lk/unsubscribe"
     url = "https://e-sms.dialog.lk/api/v1/sms"
     headers = CaseInsensitiveDict()
     access_token = login_sms_api()
@@ -124,7 +124,7 @@ def send_sms_notification(self):
             from_date = schedule_data.starting_period.strftime('%b %-dth')
             from_time = schedule_data.starting_period.strftime('%I:%S %p')
             to_time = schedule_data.ending_period.strftime('%I:%S %p')
-            message = f"{from_date} from {from_time} to {from_time} [Group {schedule_data.group_name.name} power cut schedule].To unsubscribe go to {link}"
+            message = f"{from_date} from {from_time} to {to_time} [Group {schedule_data.group_name.name} power cut schedule].To unsubscribe go to {link}"
             numbers = list(current_qs)
             resp = send_sms(numbers, message, tx_id)
             if resp.status_code == 200:
@@ -164,7 +164,7 @@ def send_sms_notification(self):
 
 @app.task(bind=True, max_retries=settings.CELERY_TASK_PUBLISH_RETRY)
 def send_sms_to_batch(self):
-    link = f"https://{settings.DOMAIN_NAME}/api/unsubscribe/"
+    link = f"https://ekata.lk/unsubscribe"
     url = "https://e-sms.dialog.lk/api/v1/sms"
     headers = CaseInsensitiveDict()
     access_token = login_sms_api()
@@ -187,7 +187,7 @@ def send_sms_to_batch(self):
         to_time = batch_data.schedule.ending_period.strftime('%I:%S %p')
         while True:
             tx_id = generate_uniqe_id()
-            message = f"{from_date} from {from_time} to {from_time} [Group {batch_data.schedule.group_name} power cut schedule].To unsubscribe go to {link}"
+            message = f"{from_date} from {from_time} to {to_time} [Group {batch_data.schedule.group_name} power cut schedule].To unsubscribe go to {link}"
             numbers = list(batch_data.subscriber.all().values(mobile=F("mobile_number")))
             resp = send_sms(numbers, message, tx_id)
             res_data = resp.json()
