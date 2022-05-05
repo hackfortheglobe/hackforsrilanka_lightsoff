@@ -33,8 +33,7 @@ DEBUG = env("DEBUG")
 SECRET_KEY = env("SECRET_KEY")
 DOMAIN_NAME = env("DOMAIN_NAME")
 ALLOWED_HOSTS = [DOMAIN_NAME]
-FRONT_END_ORIGIN = env("FRONT_END_ORIGIN", default="http://localhost:3000")
-CORS_ALLOWED_ORIGINS = [FRONT_END_ORIGIN]
+CORS_ALLOWED_ORIGINS = env("FRONT_END_ORIGINS", default="http://localhost:3000").split(",")
 # URL to API endpoint that provides data about power cutoff schedules
 API_BASE_URL = env("API_BASE_URL")
 
