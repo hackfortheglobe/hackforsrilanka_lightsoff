@@ -260,6 +260,7 @@ class PlaceView(APIView):
 
     def post(self, request):
         createCount=0
+        updateCount=0
         print ("GSS received:",len(request.data))
         for gss_data in request.data:
             try:
@@ -284,6 +285,7 @@ class PlaceView(APIView):
                         place_obj.suburb = suburb
                         place_obj.feeders = request.data[gss_data][area_data]["feeders"]
                         place_obj.save()
+                        updateCount = updateCount+1
                     group_collection = []
                     for group_name in request.data[gss_data][area_data]["groups"]:
                         group_obj = GroupName.objects.filter(name=group_name).first()
@@ -295,6 +297,7 @@ class PlaceView(APIView):
                 print("Invalid data", str(e))
 
             print( "Created places: ", createCount)
+            print( "Updated places: ", updateCount)
         return Response({"message": "Successfully inserted."})
 
 
