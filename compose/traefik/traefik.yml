@@ -31,7 +31,7 @@ certificatesResolvers:
 http:
   routers:
     web-secure-router:
-      rule: "Host(`cftg-backend.rafaco.es`)"
+      rule: "Host(`68.183.90.211`)"
       entryPoints:
         - web-secure
       middlewares:
@@ -42,7 +42,7 @@ http:
         certResolver: letsencrypt
 
     flower-secure-router:
-      rule: "Host(`cftg-backend.rafaco.es`)"
+      rule: "Host(`68.183.90.211`)"
       entryPoints:
         - flower
       service: flower
