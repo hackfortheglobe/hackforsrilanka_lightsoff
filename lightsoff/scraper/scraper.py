@@ -223,7 +223,7 @@ def extract_schedule_data(data_dic,all_groups,groups,pdf_local_path):
                     groups = list(group_field)
                 for group in groups:
                     for date in date_range:
-                        schedules['schedules'].append({'group_name':group.strip(),
+                        schedules['schedules'].append({'group':group.strip(),
                         'starting_period':f'{date.strftime("%Y-%m-%d")} {timings[0].strip()}',
                         'ending_period':f'{date.strftime("%Y-%m-%d")} {timings[-1].strip()}'})
     return schedules
