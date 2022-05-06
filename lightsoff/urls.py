@@ -19,5 +19,6 @@ urlpatterns = [
     path("api/all-area/", AllAreaName.as_view(), name="all_area"),
     path("api/create-place/", PlaceView.as_view(), name="create_place"),
     path("api/subscribed-user/", GetAllSubscribedUser.as_view(), name="subscribed_user"),
+    path("api/all-suburb/", GetAllSuburb.as_view(), name="all_suburb"),
 ]
 

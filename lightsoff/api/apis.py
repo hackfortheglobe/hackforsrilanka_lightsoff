@@ -314,3 +314,7 @@ class SearchScheduleBySuburb(APIView):
                             status=status.HTTP_400_BAD_REQUEST)
 
 
+class GetAllSuburb(APIView):
+    def get(self, request):
+        all_suburb = SuburbPlace.objects.all().order_by("suburb").values_list("suburb", flat=True).distinct()
+        return Response({"message": "", "data": all_suburb})
