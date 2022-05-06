@@ -44,17 +44,8 @@ class UserSubscription(APIView, SendOtp):
                              },status=status.HTTP_409_CONFLICT)
         user = Subscriber.objects.filter(mobile_number=request.data["mobile_number"].strip(),
                                          is_unsubscribed=True).first()
-        if user:
-            serializer = UserSubscriptionSerializer(data=request.data,
-                                                    instance=user,
-                                                    partial=True)
-            serializer.save()
-            user.is_unsubscribed = False
-            user.save()
-            return Response({"message": "Subscribed successfully."},
-                            status=status.HTTP_208_ALREADY_REPORTED)
-        totp, secret_key = get_totp()
         group_name = GroupName.objects.filter(name=request.data["group_name"]).first()
+        totp, secret_key = get_totp()
         if group_name:
             request.data["group_name"] = group_name.id
             serializer = UserSubscriptionSerializer(data=request.data)
@@ -145,17 +136,10 @@ class VerifyOtp(APIView):
 class Unsubscribed(APIView):
 
     def post(self, request):
-        request.data["is_unsubscribed"] = True
         user = Subscriber.objects.filter(mobile_number=request.data["mobile_number"].strip()).first()
         if user:
-            serializer = UnsubscribedSerializer(instance=user,
-                                                data=request.data,
-                                                partial=True)
-            if serializer.is_valid():
-                serializer.save()
-                return Response({"message": "Unsubscribed successfully."})
-            else:
-                return Response({"message": "", "errors": serializer.errors})
+            user.delete()
+            return Response({"message": "Unsubscribed successfully."})
         else:
             return Response({"message": "", "errors": "Account not found with this number."},
                             status=status.HTTP_404_NOT_FOUND)
@@ -280,12 +264,13 @@ class PlaceView(APIView):
         for gss_data in request.data:
             try:
                 for area_data in request.data[gss_data]:
-                    suburb_data = SuburbPlace.objects.filter(gss=gss_data).first()
+                    suburb_data = SuburbPlace.objects.filter(gss__iexact=gss_data,
+                                                             area__iexact=area_data).first()
                     suburb = ""
                     if suburb_data:
                         suburb = suburb_data.suburb
-                    place_obj = Place.objects.filter(gss=gss_data,
-                                                     area=area_data
+                    place_obj = Place.objects.filter(gss__iexact=gss_data,
+                                                     area__iexact=area_data
                                                      ).first()
                     if not place_obj:
                         place_obj = Place.objects.create(gss=gss_data,
@@ -294,6 +279,7 @@ class PlaceView(APIView):
                                                          feeders=request.data[gss_data][area_data]["feeders"])
                     else:
                         place_obj.area = area_data
+                        place_obj.suburb = suburb
                         place_obj.feeders = request.data[gss_data][area_data]["feeders"]
                         place_obj.save()
                     group_collection = []
@@ -319,12 +305,12 @@ class SearchScheduleBySuburb(APIView):
     def get(self, request):
         suburb = request.query_params.get("suburb", None)
         if suburb:
-            suburb_data = SuburbPlace.objects.filter(suburb__iexact=suburb).order_by("gss")
-            serializer = SuburbSerializer(suburb_data, many=True)
+            suburb_data = Place.objects.filter(suburb__iexact=suburb).order_by("gss", "area")
+            serializer = CreatePlaceSerializer(suburb_data, many=True)
             return Response({"message":"", "data": serializer.data})
         else:
             return Response({"message": "",
-                             "errors": "Suburb parameter is required."},
+                             "errors": "suburb parameter is required."},
                             status=status.HTTP_400_BAD_REQUEST)
 
 

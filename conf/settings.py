@@ -55,6 +55,7 @@ INSTALLED_APPS = [
     "lightsoff.apps.LightsoffConfig",
     "rest_framework_api_key",
     "corsheaders",
+    'django_extensions',
 ]
 
 MIDDLEWARE = [

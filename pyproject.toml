@@ -36,6 +36,8 @@ python-multipart = "0.0.5"
 pytz = "2021.3"
 ghostscript = "0.7"
 django-jazzmin = "^2.5.0"
+django-extensions = "^3.1.5"
+tqdm = "^4.64.0"
 
 [tool.poetry.dev-dependencies]
 black = {version = "^22.3.0", allow-prereleases = true}
