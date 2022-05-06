@@ -101,3 +101,8 @@ data/
 
 # celery
 celerybeat-schedule
+
+# env
+.envs/*
+!.envs/.django.example
+!.envs/.postgres.example

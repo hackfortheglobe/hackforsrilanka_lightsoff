@@ -33,7 +33,9 @@ DEBUG = env("DEBUG")
 SECRET_KEY = env("SECRET_KEY")
 DOMAIN_NAME = env("DOMAIN_NAME")
 ALLOWED_HOSTS = [DOMAIN_NAME]
-CORS_ALLOWED_ORIGINS = env("FRONT_END_ORIGINS", default="http://localhost:3000").split(",")
+CORS_ALLOWED_ORIGINS = env("FRONT_END_ORIGINS", default="http://localhost:3000").split(
+    ","
+)
 # URL to API endpoint that provides data about power cutoff schedules
 API_BASE_URL = env("API_BASE_URL")
 
@@ -55,7 +57,7 @@ INSTALLED_APPS = [
     "lightsoff.apps.LightsoffConfig",
     "rest_framework_api_key",
     "corsheaders",
-    'django_extensions',
+    "django_extensions",
 ]
 
 MIDDLEWARE = [
@@ -140,8 +142,8 @@ DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL")
 SERVER_EMAIL = env("DEFAULT_FROM_EMAIL")
 
 # Celery settings
-BROKER_URL = env("REDIS_URL")
-CELERY_RESULT_BACKEND = env("REDIS_URL")
+CELERY_BROKER_URL = env("CELERY_BROKER_URL")
+CELERY_RESULT_BACKEND = CELERY_BROKER_URL
 
 CELERYBEAT_SCHEDULE = {
     # Task to pull updates from API hourly
@@ -155,10 +157,11 @@ CELERYBEAT_SCHEDULE = {
 SMS_API_USERNAME = env("SMS_API_USERNAME")
 SMS_API_PASSWORD = env("SMS_API_PASSWORD")
 
-CELERYBEAT_SCHEDULER = 'django_celery_beat.schedulers:DatabaseScheduler'
+CELERYBEAT_SCHEDULER = "django_celery_beat.schedulers:DatabaseScheduler"
 
 CELERY_TASK_PUBLISH_RETRY = env("SEND_SMS_MAX_RETRY", cast=int)
 CELERY_IMPORTS = ("lightsoff.tasks",)
+
 # django-crispy-forms settings
 CRISPY_ALLOWED_TEMPLATE_PACKS = "tailwind"
 CRISPY_TEMPLATE_PACK = "tailwind"
@@ -169,6 +172,4 @@ DATA_UPLOAD_MAX_NUMBER_FIELDS = 20000
 
 SMS_MASK_NAME = env("SMS_MASK_NAME", default="Ekata")
 
-JAZZMIN_SETTINGS = {
-    "copyright": "hfsl"
-}
+JAZZMIN_SETTINGS = {"copyright": "hfsl"}

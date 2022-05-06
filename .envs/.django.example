@@ -1,0 +1,33 @@
+# General
+# ------------------------------------------------------------------------------
+DEBUG=False
+SECRET_KEY=
+
+# Gunicorn
+# ------------------------------------------------------------------------------
+WEB_CONCURRENCY=4
+
+
+# Redis
+# ------------------------------------------------------------------------------
+REDIS_URL=redis://redis:6379/0
+
+# Celery
+# ------------------------------------------------------------------------------
+
+# Flower
+CELERY_FLOWER_USER=
+CELERY_FLOWER_PASSWORD=
+
+# Custom
+DOMAIN_NAME=cftg-backend.rafaco.es
+API_BASE_URL=api.hackfortheglobe.org
+FRONT_END_ORIGIN="www.ekata.lk,ekata.lk,react-hackforsrilanka-website.vercel.app,react-hackforsrilanka-website-dan-niles.vercel.app,react-hackforsrilanka-website-git-main-dan-niles.vercel.app"
+FRONT_END_ORIGINS="https://www.ekata.lk,https://ekata.lk,https://react-hackforsrilanka-website.vercel.app,https://react-hackforsrilanka-website-dan-niles.vercel.app,https://react-hackforsrilanka-website-git-main-dan-niles.vercel.app"
+LIGHT_OFF_API_KEY=
+OTP_EXPIRE_SECONDS=300
+OTP_NUM_DIGITS=6
+SEND_SMS_MAX_RETRY=5
+SMS_API_PASSWORD=
+SMS_API_USERNAME=
+SMS_MASK_NAME=
