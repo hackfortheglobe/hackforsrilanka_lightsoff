@@ -13,10 +13,8 @@ from lightsoff.utils import *
 import requests
 import json
 from requests.structures import CaseInsensitiveDict
-from django_celery_beat.models import (
-                                       PeriodicTask,
-                                       ClockedSchedule,
-                                       CrontabSchedule)
+from django_celery_beat.models import (PeriodicTask,
+                                       ClockedSchedule)
 from django.db.models import Prefetch
 from django.core.paginator import Paginator
 from django.db.models import F
@@ -97,7 +95,7 @@ from django.db.models import F
 
 
 
-@app.task(bind=True)
+@app.task(bind=True, max_retries=0)
 def send_sms_notification(self):
 
     link = f"https://ekata.lk/unsubscribe"
@@ -185,6 +183,7 @@ def send_sms_to_batch(self):
         from_date = batch_data.schedule.starting_period.strftime('%b %-dth')
         from_time = batch_data.schedule.starting_period.strftime('%I:%S %p')
         to_time = batch_data.schedule.ending_period.strftime('%I:%S %p')
+        count_number = 1
         while True:
             tx_id = generate_uniqe_id()
             message = f"{from_date} from {from_time} to {to_time} [Group {batch_data.schedule.group_name} power cut schedule].To unsubscribe go to {link}"
@@ -197,6 +196,10 @@ def send_sms_to_batch(self):
                 print("Transaction id already exists.")
             else:
                 break;
+            if count_number == 899:
+                break;
+            count_number +=1
+
         if resp.status_code == 200:
             tx_data = Transaction.objects.create(campaingn_id=res_data["data"].get("campaignId", None),
                                        campaingn_cost=res_data["data"].get("campaignCost", None),
@@ -221,17 +224,17 @@ def send_sms_to_batch(self):
         raise self.retry(countdown=300)
 
 from lightsoff.scraper.scraper import scrape
-import os
 from os.path import exists
+from os import getcwd, remove
 
 
-@app.task(bind=True)
+@app.task(bind=True, max_retries=0)
 def scrapper_data(self):
     DOMAIN_NAME = f"https://{settings.DOMAIN_NAME}"
     place_url = f"{DOMAIN_NAME}/api/create-place/"
     schedule_url = f"{DOMAIN_NAME}/api/create-schedule/"
     api_key = settings.LIGHT_OFF_API_KEY
-    base_dir = f"{os.getcwd()}/lightsoff"
+    base_dir = f"{getcwd()}/lightsoff"
     output_dir = f"{base_dir}/scraper/outputs/"
     output_place = f"{base_dir}/scraper/outputs/places.json"
     output_schedule = f"{base_dir}/scraper/outputs/schedules.json"
@@ -252,10 +255,14 @@ def scrapper_data(self):
             place_data = json.load(f)
         place_data = json.dumps(place_data)
         res = requests.post(url=place_url, headers=headers, data=place_data)
+        ##place_data flushing the data from memory
+        place_data = None
         with open(output_schedule) as f:
             schedule_data = json.load(f)
         schedule_data = json.dumps(schedule_data)
         requests.post(url=schedule_url, headers=headers, data=schedule_data)
+        ##schedule_data flushing the data from memory
+        schedule_data = None
         with open(output_last_id) as f:
             last_processed_id = f.read()
         if last_obj:
@@ -263,12 +270,14 @@ def scrapper_data(self):
             last_obj.save()
         else:
             LastProcessedDocument.objects.create(last_processed_id=last_processed_id)
-        os.remove(output_place)
-        os.remove(output_schedule)
-        os.remove(output_last_id)
+        ##last_processed_id flushing the data from memory
+        last_processed_id = None
+        remove(output_place)
+        remove(output_schedule)
+        remove(output_last_id)
         print("Data successfully inserted.")
     else:
         print("Data Already Exists")
-    
+        return None
     
 

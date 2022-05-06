@@ -1,16 +1,15 @@
 import datetime
-import hashlib
-import json
+# import hashlib
 import requests
 from django.conf import settings
-from django.core.mail import EmailMultiAlternatives
-from django.utils.html import strip_tags
+# from django.core.mail import EmailMultiAlternatives
+# from django.utils.html import strip_tags
 # from lightsoff.models import Fetch
-import requests
 from .models import SmsApiAccessToken, Transaction
-from datetime import timezone, timedelta
+from datetime import timedelta
 import pyotp
-import math, random
+from random import random
+from math import floor
 from pytz import timezone as pytz_timezones
 
 local_time = pytz_timezones(settings.TIME_ZONE)
@@ -184,7 +183,6 @@ def get_totp(key=None):
 
 import json
 from requests.structures import CaseInsensitiveDict
-from django.db.models import F
 
 def send_sms(numbers, message, tx_id):
 
@@ -208,7 +206,7 @@ def generate_uniqe_id():
     tx_id = ""
     while True:
         for i in range(8):
-            tx_id += digits[math.floor(random.random() * 10)]
+            tx_id += digits[floor(random() * 10)]
         tx_id = int(tx_id)
         if not Transaction.objects.filter(tx_id=tx_id).first():
             return tx_id

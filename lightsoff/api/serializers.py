@@ -1,16 +1,15 @@
 from rest_framework import serializers
 from ..models import ScheduleGroup, Place, Subscriber, SuburbPlace
-from django_celery_beat.models import PeriodicTask, ClockedSchedule
-from django.db import transaction 
 from datetime import datetime, timedelta
-from django.utils import timezone
 
 
 class UserSubscriptionSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Subscriber
-        fields = '__all__'
+        fields = ("mobile_number", "name" , 'area'
+                  ,"group_name" , "is_verified",
+                  "is_unsubscribed")
 
 
 class UnsubscribedSerializer(serializers.ModelSerializer):
@@ -24,7 +23,8 @@ class CreateScheduleSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = ScheduleGroup
-        fields = '__all__'
+        fields = ("starting_period", "ending_period",
+                  "group_name", "is_run")
 
 class PublicScheduleSerializer(serializers.ModelSerializer):
     group_name = serializers.CharField(source='group_name.name')
@@ -37,11 +37,11 @@ class PublicScheduleSerializer(serializers.ModelSerializer):
 class CreatePlaceSerializer(serializers.ModelSerializer):
     class Meta:
         model = Place
-        fields = '__all__'
+        fields = ("suburb", "gss", "area", "groups", "feeders")
 
 
 class SuburbSerializer(serializers.ModelSerializer):
     class Meta:
         model = SuburbPlace
-        fields = '__all__'
+        fields = ("suburb", "gss", "area")
 

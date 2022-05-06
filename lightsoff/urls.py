@@ -1,4 +1,3 @@
-from argparse import Namespace
 from django.urls import path
 from lightsoff import views
 from .api.apis import *
@@ -13,7 +12,7 @@ urlpatterns = [
     path("api/schedule-data/", GetAllPublicSchedule.as_view(), name="schedule_data"),
     path("api/power-schedule/<str:group>/", SchedulesByGroup.as_view(), name="power_schedule"),
     path("api/schedule-by-place/", SearchSchedulesByPlace.as_view(), name="schedule_by_place"),
-    path("api/search-by-suburb/", SearchScheduleBySuburb.as_view(), name="search_by_suburb"),
+    path("api/search-by-suburb/", SearchBySuburb.as_view(), name="search_by_suburb"),
     path("api/all-group/", AllGroupName.as_view(), name="all_group"),
     path("api/all-gss/", AllGCCName.as_view(), name="all_gss"),
     path("api/all-area/", AllAreaName.as_view(), name="all_area"),

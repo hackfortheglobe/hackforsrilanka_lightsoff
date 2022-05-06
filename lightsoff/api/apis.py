@@ -4,11 +4,9 @@ from .serializers import *
 from ..models import *
 from rest_framework import status
 from django_celery_beat.models import PeriodicTask, ClockedSchedule
-from django.db.models import Q
-from django.utils import timezone
 from ..utils import *
 from rest_framework_api_key.permissions import HasAPIKey
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timedelta
 
 
 class SendOtp:
@@ -301,7 +299,7 @@ class GetAllSubscribedUser(APIView):
         return Response({"message": "", "data": serializer.data})
 
 
-class SearchScheduleBySuburb(APIView):
+class SearchBySuburb(APIView):
     def get(self, request):
         suburb = request.query_params.get("suburb", None)
         if suburb:
