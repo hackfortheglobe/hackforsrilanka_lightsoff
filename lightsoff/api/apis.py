@@ -259,8 +259,11 @@ class PlaceView(APIView):
     permission_classes = [HasAPIKey]
 
     def post(self, request):
+        createCount=0
+        print ("GSS received:",len(request.data))
         for gss_data in request.data:
             try:
+                print ("#",request.data.index(gss_data), ": Areas for ", gss_data, " are: ", request.data[gss_data])
                 for area_data in request.data[gss_data]:
                     suburb_data = SuburbPlace.objects.filter(gss__iexact=gss_data,
                                                              area__iexact=area_data).first()
@@ -275,6 +278,7 @@ class PlaceView(APIView):
                                                          suburb=suburb,
                                                          area=area_data,
                                                          feeders=request.data[gss_data][area_data]["feeders"])
+                        createCount = createCount+1
                     else:
                         place_obj.area = area_data
                         place_obj.suburb = suburb
@@ -289,6 +293,8 @@ class PlaceView(APIView):
                     place_obj.groups.set(group_collection)
             except Exception as e:
                 print("Invalid data", str(e))
+
+            print( "Created places: ", createCount)
         return Response({"message": "Successfully inserted."})
 
 

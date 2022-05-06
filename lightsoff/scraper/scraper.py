@@ -223,9 +223,11 @@ def extract_schedule_data(data_dic,all_groups,groups,pdf_local_path):
                     groups = list(group_field)
                 for group in groups:
                     for date in date_range:
+                        starting_period = f'{date.strftime("%Y-%m-%d")} {timings[0].strip()}'.replace('.',':')
+                        ending_period = f'{date.strftime("%Y-%m-%d")} {timings[-1].strip()}'.replace('.',':')
                         schedules['schedules'].append({'group':group.strip(),
-                        'starting_period':f'{date.strftime("%Y-%m-%d")} {timings[0].strip()}',
-                        'ending_period':f'{date.strftime("%Y-%m-%d")} {timings[-1].strip()}'})
+                        'starting_period':starting_period,
+                        'ending_period':ending_period})
     return schedules
 
 def extract_places_data(data_dic,all_groups,groups,actual_groups):
