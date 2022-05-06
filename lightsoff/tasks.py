@@ -254,13 +254,22 @@ def scrapper_data(self):
         with open(output_place) as f:
             place_data = json.load(f)
         place_data = json.dumps(place_data)
-        res = requests.post(url=place_url, headers=headers, data=place_data)
+        for single_place_data in place_data:
+            batch={}
+            batch[single_place_data] = place_data[single_place_data]
+            requests.post(url=place_url, headers=headers, data=batch)
+
         ##place_data flushing the data from memory
         place_data = None
         with open(output_schedule) as f:
             schedule_data = json.load(f)
         schedule_data = json.dumps(schedule_data)
-        requests.post(url=schedule_url, headers=headers, data=schedule_data)
+        schedule_batches = chunks(schedule_data['schedules'], 10)
+        for schedule_batch in schedule_batches:
+            batch={}
+            batch['schedules'] = schedule_batch
+            requests.post(url=schedule_url, headers=headers, data=batch)
+        
         ##schedule_data flushing the data from memory
         schedule_data = None
         with open(output_last_id) as f:
@@ -280,4 +289,7 @@ def scrapper_data(self):
         print("Data Already Exists")
         return None
     
-
+def chunks(lst, n):
+    """Yield successive n-sized chunks from lst."""
+    for i in range(0, len(lst), n):
+        yield lst[i:i + n]
