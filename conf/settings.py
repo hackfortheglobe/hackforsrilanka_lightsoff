@@ -143,14 +143,15 @@ SERVER_EMAIL = env("DEFAULT_FROM_EMAIL")
 BROKER_URL = env("REDIS_URL")
 CELERY_RESULT_BACKEND = env("REDIS_URL")
 
-# CELERYBEAT_SCHEDULE = {
-#     # Task to pull updates from API hourly
-#     "send_update_emails": {
-#         "task": "lightsoff.tasks.send_update_emails",
-#         # Change pull frquency here
-#         "schedule": crontab(hour="*"),
-#     },
-# }
+CELERYBEAT_SCHEDULE = {
+    # Task to pull updates from API hourly
+    "scrapper_data": {
+        "task": "lightsoff.tasks.scrapper_data",
+        # Change pull frquency here
+        "schedule": crontab(minute="*/10"),
+    },
+}
+
 SMS_API_USERNAME = env("SMS_API_USERNAME")
 SMS_API_PASSWORD = env("SMS_API_PASSWORD")
 

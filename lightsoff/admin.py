@@ -31,7 +31,7 @@ admin.site.register(ScheduleGroup, AdminScheduleGroup)
 
 
 class AdminPlace(admin.ModelAdmin):
-	list_display = ("id", "gss", "area")
+	list_display = ("id", "gss", "area", "suburb")
 	readonly_fields = ('updated_at', 'created_at', )
 
 admin.site.register(Place, AdminPlace)
@@ -44,6 +44,7 @@ admin.site.register(Batch, AdminBatch)
 
 class AdminSuburbPlace(admin.ModelAdmin):
 	list_display = ("id", "suburb", "gss", "area")
+	search_fields = ["suburb", "gss", "area"]
 
 admin.site.register(SuburbPlace, AdminSuburbPlace)
 
