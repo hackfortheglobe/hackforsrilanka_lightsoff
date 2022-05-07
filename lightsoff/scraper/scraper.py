@@ -103,6 +103,9 @@ def run_scraper(last_document_id):
     # Save all outputs into the output folder
     save_all_outputs(json_places, json_schedules, new_document_id)
 
+    # Export outputs in CSV
+    #export_outputs_to_CSV(json_places, json_schedules)
+
     return new_document_id
 
 
@@ -470,8 +473,31 @@ def save_all_outputs(places, schedules, document_id):
         f.write(document_id)
     return
 
+
+def export_outputs_to_CSV(json_places, json_schedules):
+    # Save extracted places in CSV
+    csvPath = (outputsFolder + placesFileName).replace(".json", ".csv")
+    data = []
+    for gss_name in json_places.keys():
+        for area_name in json_places[gss_name].keys():
+            current_area = json_places[gss_name][area_name]
+            for group_name in current_area["groups"]:
+                row = {"gss": gss_name, "area": area_name, "group": group_name}
+                data.append(row)
+    df = pd.DataFrame(data)
+    df.to_csv (csvPath, index = None)
+
+    # Save extracted schedules in CSV
+    csvPath = (outputsFolder + schedulesFileName).replace(".json", ".csv")
+    data = []
+    for schedule in json_schedules["schedules"]:
+        row = {"group": schedule["group"], "starting_period": schedule["starting_period"], "ending_period": schedule["ending_period"]}
+        data.append(row)
+    df = pd.DataFrame(data)
+    df.to_csv (csvPath, index = None)
+
+
 def logFinish(reason):
     print("========> %s" % (reason))
     print("========> %s seconds" % (datetime.now().timestamp() - start_datetime.timestamp()))
     print("")
-    
