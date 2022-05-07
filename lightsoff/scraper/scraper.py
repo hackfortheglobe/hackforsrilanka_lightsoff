@@ -38,7 +38,7 @@ import urllib3
 
 start_datetime = datetime.now()
 
-scraperFolder = f"{os.path.dirname(os.path.abspath(__file__))}/"
+scraperFolder = f"~/hackforsrilanka_lightsoff/lightsoff/scraper/"
 tempFolder = f"{scraperFolder}temp/"
 currentFileName = 'ceb_current.pdf'
 outputsFolder = f"{scraperFolder}outputs/"
