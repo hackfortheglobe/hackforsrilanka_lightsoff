@@ -103,6 +103,9 @@ def run_scraper(last_document_id):
     # Save all outputs into the output folder
     save_all_outputs(json_places, json_schedules, new_document_id)
 
+    # Export outputs in CSV
+    #export_outputs_to_CSV(json_places, json_schedules)
+
     return new_document_id
 
 
@@ -210,17 +213,20 @@ def extract_schedule_data(data_dic,all_groups,groups,pdf_local_path):
         print("Document schedule table #",table_no + 1," has ",len(current_table)," data rows.")
         for index,row in current_table.iterrows():
             joined_row = ' '.join(row.values)
-            time_patt = re.compile(r'\s\d?\d.\d{2}\s')
-            time_matches = time_patt.findall(joined_row)
-            timings = [time_match for time_match in time_matches]
+            timings = re.finditer(r'\s\d?\d[:.]\d{2}\s(a.m|p.m)?',joined_row)
+            #print('Timings after match : ',timings)
+            timings = [i.group(0) for i in timings]
+            #print('Timings after list : ',timings)
+            timings = timeformat_convert24_hr(timings)
+            #print('Timings After func : ',timings)
             if timings:
-                groups = []
-                group_field = row[all_groups[1][1]]
-                # Split groups: can be comma separate or all together
-                if ',' in group_field:
-                    groups = group_field.split(',')
+                if ',' in row[all_groups[1][1]]:
+                    groups = row[all_groups[1][1]].split(',')
                 else:
-                    groups = list(group_field)
+                    if 'CC' in row[all_groups[1][1]]:
+                        continue
+                    else:
+                        groups = [group for group in row[all_groups[1][1]]]
                 for group in groups:
                     for date in date_range:
                         starting_period = f'{date.strftime("%Y-%m-%d")} {timings[0].strip()}'.replace('.',':')
@@ -229,6 +235,43 @@ def extract_schedule_data(data_dic,all_groups,groups,pdf_local_path):
                         'starting_period':starting_period,
                         'ending_period':ending_period})
     return schedules
+
+def clean_schedules_timings(timings):
+    timings1 = []
+    for time in timings:
+        #print('Time :',time)
+        time = time.strip()
+        pattern = r'[:. ]'
+        if 'a.m' in time or 'p.m' in time:
+            time = re.split(pattern,time)
+            #print('Time after regex : ',time)
+
+            #print(f'time 0 {time[0]} time 1 {time[1]} time 2 {time[2]} time 3 {time[3]}')
+            # it is 12 hour format
+            if time[2] == "a" and int(time[0]) == "12":
+                timings1.append(f'00:{time[1]}')
+            # remove the AM
+            elif time[2] == "a":
+                timings1.append(time[0]+':'+time[1])
+                # Checking if last two elements of time
+                # is PM and first two elements are 12
+            elif time[2] == "p" and time[2] == "12":
+                timings1.append(f'12:{time[1]}')
+            else:
+                # add 12 to hours and remove PM
+                timings1.append(str(int(time[0]) + 12)+':'+time[1])
+    return timings1
+
+def timeformat_convert24_hr(timings):
+    if 'a.m' in timings[0] or 'p.m' in timings[0]:
+        # it is 12 hour format
+        timings = clean_schedules_timings(timings)
+        return timings
+    else:
+        # it is 24 hours format
+        timings = [timing.strip() for timing in timings]
+        return timings
+
 
 def extract_places_data(data_dic,all_groups,groups,actual_groups):
     main_dict = {}
@@ -372,11 +415,17 @@ def get_dates_between(start, end):
 def cleaned_areas(main_dict):
     for key,value in main_dict.items():
         count=0
-        for places in value['Affected area']:
-            places = [ x.strip() for x in places.replace("\n", "").split(',')]
+        for places,gss in value[['Affected area','GSS']].itertuples(index=False):
+            # cleaning GSS
+            gss = re.sub(r'(\b|\s)new_','',gss.replace("\n", ""),flags=re.IGNORECASE)
+            main_dict[key]['GSS'][count] = gss
+            # cleaning Affected Area
+            places = [ x.replace("\n", "").strip() for x in places.split(',')]
+            places = [x for x in places if len(x)>3]
             places = list(map(lambda x: re.sub(r'\srd(\b|\s)',' Road ',x,flags=re.IGNORECASE),places))
             places = list(map(lambda x: re.sub(r'\spl(\b|\s)',' Place',x,flags=re.IGNORECASE),places))
-            places = list(filter(lambda x: x if 'colony' not in x else None,places))
+            places = [x for x in places if 'colony' not in x.lower() and 'colonies' not in x.lower()]
+            places = list(map(lambda x: re.sub(r'(\b|\s)new_','',x,flags=re.IGNORECASE),places))
             places = list(map(lambda x: re.sub(r'[.]?(\w|\s|^\.|\b)+\bleco\b(\w|\s|:|\(|\))+[.]?','',x,flags=re.IGNORECASE),places))
             places = list(map(lambda x: x.capitalize(),places))
             main_dict[key]['Affected area'][count] = places
@@ -424,8 +473,31 @@ def save_all_outputs(places, schedules, document_id):
         f.write(document_id)
     return
 
+
+def export_outputs_to_CSV(json_places, json_schedules):
+    # Save extracted places in CSV
+    csvPath = (outputsFolder + placesFileName).replace(".json", ".csv")
+    data = []
+    for gss_name in json_places.keys():
+        for area_name in json_places[gss_name].keys():
+            current_area = json_places[gss_name][area_name]
+            for group_name in current_area["groups"]:
+                row = {"gss": gss_name, "area": area_name, "group": group_name}
+                data.append(row)
+    df = pd.DataFrame(data)
+    df.to_csv (csvPath, index = None)
+
+    # Save extracted schedules in CSV
+    csvPath = (outputsFolder + schedulesFileName).replace(".json", ".csv")
+    data = []
+    for schedule in json_schedules["schedules"]:
+        row = {"group": schedule["group"], "starting_period": schedule["starting_period"], "ending_period": schedule["ending_period"]}
+        data.append(row)
+    df = pd.DataFrame(data)
+    df.to_csv (csvPath, index = None)
+
+
 def logFinish(reason):
     print("========> %s" % (reason))
     print("========> %s seconds" % (datetime.now().timestamp() - start_datetime.timestamp()))
     print("")
-    
