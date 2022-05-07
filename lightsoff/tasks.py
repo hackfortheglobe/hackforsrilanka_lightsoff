@@ -235,10 +235,10 @@ def scrapper_data(self):
     schedule_url = f"{DOMAIN_NAME}/api/create-schedule/"
     api_key = settings.LIGHT_OFF_API_KEY
     base_dir = f"{getcwd()}/lightsoff"
-    output_dir = f"{base_dir}/scraper/outputs/"
-    output_place = f"{base_dir}/scraper/outputs/places.json"
-    output_schedule = f"{base_dir}/scraper/outputs/schedules.json"
-    output_last_id = f"{base_dir}/scraper/outputs/last_processed_document_id.txt"
+    output_dir = f"{base_dir}/scraper/outputs"
+    output_place = f"{output_dir}/places.json"
+    output_schedule = f"{output_dir}/schedules.json"
+    output_last_id = f"{output_dir}/last_processed_document_id.txt"
 
     last_obj = LastProcessedDocument.objects.all().last()
     if last_obj:
@@ -251,27 +251,29 @@ def scrapper_data(self):
         headers = CaseInsensitiveDict()
         headers["Content-Type"] = "application/json"
         headers["Authorization"] = f"Api-Key {api_key}"
+        
+        # Read places and push them via api (use batching to avoid timeouts)
         with open(output_place) as f:
             place_data = json.load(f)
-        place_data = json.dumps(place_data)
-        for place_key in place_data.keys():
-            batch={}
-            batch[place_key] = place_data[place_key]
-            requests.post(url=place_url, headers=headers, data=batch)
-
-        ##place_data flushing the data from memory
+        for single_place_data in place_data:
+            batch_dict={}
+            batch_dict[single_place_data] = place_data[single_place_data]
+            batch_string = json.dumps(batch_dict)
+            requests.post(url=place_url, headers=headers, data=batch_string)
         place_data = None
+
+        # Read schedules and push them via api (use batching to avoid timeouts)
         with open(output_schedule) as f:
             schedule_data = json.load(f)
-        schedule_data = json.dumps(schedule_data)
         schedule_batches = chunks(schedule_data['schedules'], 10)
         for schedule_batch in schedule_batches:
-            batch={}
-            batch['schedules'] = schedule_batch
-            requests.post(url=schedule_url, headers=headers, data=batch)
-        
-        ##schedule_data flushing the data from memory
+            batch_dict={}
+            batch_dict['schedules'] = schedule_batch
+            batch_string = json.dumps(schedule_data)
+            requests.post(url=schedule_url, headers=headers, data=batch_string)
         schedule_data = None
+
+        # Read last document id and push them via api
         with open(output_last_id) as f:
             last_processed_id = f.read()
         if last_obj:
@@ -279,14 +281,15 @@ def scrapper_data(self):
             last_obj.save()
         else:
             LastProcessedDocument.objects.create(last_processed_id=last_processed_id)
-        ##last_processed_id flushing the data from memory
         last_processed_id = None
+
+        # Remove outputs files for next run
         remove(output_place)
         remove(output_schedule)
         remove(output_last_id)
-        print("Data successfully inserted.")
+        print("Data successfully inserted")
     else:
-        print("Data Already Exists")
+        print("Data already exists")
         return None
     
 def chunks(lst, n):
