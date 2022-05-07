@@ -254,9 +254,9 @@ def scrapper_data(self):
         with open(output_place) as f:
             place_data = json.load(f)
         place_data = json.dumps(place_data)
-        for single_place_data in place_data:
+        for place_key in place_data.keys():
             batch={}
-            batch[single_place_data] = place_data[single_place_data]
+            batch[place_key] = place_data[place_key]
             requests.post(url=place_url, headers=headers, data=batch)
 
         ##place_data flushing the data from memory
