@@ -15,10 +15,12 @@ services:
     depends_on:
       - postgres
       - redis
+    command: /start
     env_file:
       - ./.envs/.django
       - ./.envs/.postgres
-    command: /start
+    environment:
+      - TZ=Asia/Colombo"
 
   postgres:
     build:
@@ -30,6 +32,8 @@ services:
       - production_postgres_data_backups:/backups:z
     env_file:
       - ./.envs/.postgres
+    environment:
+      - TZ=Asia/Colombo"
 
   traefik:
     build:
@@ -44,21 +48,31 @@ services:
       - "0.0.0.0:80:80"
       - "0.0.0.0:443:443"
       - "0.0.0.0:5555:5555"
+    environment:
+      - TZ=Asia/Colombo"
 
   redis:
     image: redis:6
+    environment:
+      - TZ=Asia/Colombo"
 
   celeryworker:
     <<: *django
     image: ekata_production_celeryworker
     command: /start-celeryworker
+    environment:
+      - TZ=Asia/Colombo"
 
   celerybeat:
     <<: *django
     image: ekata_production_celerybeat
     command: /start-celerybeat
+    environment:
+      - TZ=Asia/Colombo"
 
   flower:
     <<: *django
     image: ekata_production_flower
     command: /start-flower
+    environment:
+      - TZ=Asia/Colombo"
