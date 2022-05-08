@@ -38,7 +38,7 @@ import urllib3
 
 start_datetime = datetime.now()
 
-scraperFolder = f"~/hackforsrilanka_lightsoff/lightsoff/scraper/"
+scraperFolder = f"{os.path.dirname(os.path.abspath(__file__))}/"
 tempFolder = f"{scraperFolder}temp/"
 currentFileName = 'ceb_current.pdf'
 outputsFolder = f"{scraperFolder}outputs/"
@@ -50,18 +50,18 @@ def scrape(last_document_id):
 
     print("Scraper started with param %s." % (last_document_id))
     try:
-        new_document_id = run_scraper(last_document_id)
+        result = run_scraper(last_document_id)
     except Exception as e:
         print(e)
         logFinish("Error running the scrapper")
         return ""
 
-    if new_document_id == "":
+    if result == "":
         logFinish("Nothing extracted")
     else:
         logFinish("NEW DATA EXTRACTED")
     
-    return new_document_id
+    return result
 
 
 def run_scraper(last_document_id):
@@ -100,13 +100,17 @@ def run_scraper(last_document_id):
         print("Extrtacted data is not valid")
         return ""
 
+    # Return all results as array instead of using output folder
+    extracted_data.append(new_document_id)
+    return extracted_data
+
     # Save all outputs into the output folder
-    save_all_outputs(json_places, json_schedules, new_document_id)
+    #save_all_outputs(json_places, json_schedules, new_document_id)
 
     # Export outputs in CSV
     #export_outputs_to_CSV(json_places, json_schedules)
 
-    return new_document_id
+    #return new_document_id
 
 
 def get_target_url():
