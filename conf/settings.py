@@ -32,7 +32,7 @@ environ.Env.read_env(BASE_DIR / ".env")
 DEBUG = env("DEBUG")
 SECRET_KEY = env("SECRET_KEY")
 DOMAIN_NAME = env("DOMAIN_NAME")
-ALLOWED_HOSTS = [DOMAIN_NAME]
+ALLOWED_HOSTS = [DOMAIN_NAME, "traefik"]
 CORS_ALLOWED_ORIGINS = env("FRONT_END_ORIGINS", default="http://localhost:3000").split(
     ","
 )
