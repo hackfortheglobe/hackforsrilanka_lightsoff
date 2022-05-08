@@ -259,7 +259,7 @@ def scrapper_data(self):
             batch_dict={}
             batch_dict[single_place_data] = place_data[single_place_data]
             batch_string = json.dumps(batch_dict)
-            requests.post(url=place_url, headers=headers, data=batch_string)
+            requests.post(url=place_url, headers=headers, data=batch_string, verify=False)
         place_data = None
 
         # Read schedules and push them via api (use batching to avoid timeouts)
@@ -269,7 +269,7 @@ def scrapper_data(self):
             batch_dict={}
             batch_dict['schedules'] = schedule_batch
             batch_string = json.dumps(schedule_data)
-            requests.post(url=schedule_url, headers=headers, data=batch_string)
+            requests.post(url=schedule_url, headers=headers, data=batch_string, verify=False)
         schedule_data = None
 
         # Read last document id and push them via api
