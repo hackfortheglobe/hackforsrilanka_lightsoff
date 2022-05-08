@@ -20,7 +20,7 @@ services:
       - ./.envs/.django
       - ./.envs/.postgres
     environment:
-      - TZ=Asia/Colombo"
+      - TZ=Asia/Colombo
 
   postgres:
     build:
@@ -33,7 +33,7 @@ services:
     env_file:
       - ./.envs/.postgres
     environment:
-      - TZ=Asia/Colombo"
+      - TZ=Asia/Colombo
 
   traefik:
     build:
@@ -49,12 +49,12 @@ services:
       - "0.0.0.0:443:443"
       - "0.0.0.0:5555:5555"
     environment:
-      - TZ=Asia/Colombo"
+      - TZ=Asia/Colombo
 
   redis:
     image: redis:6
     environment:
-      - TZ=Asia/Colombo"
+      - TZ=Asia/Colombo
 
   celeryworker:
     <<: *django
@@ -68,11 +68,11 @@ services:
     image: ekata_production_celerybeat
     command: /start-celerybeat
     environment:
-      - TZ=Asia/Colombo"
+      - TZ=Asia/Colombo
 
   flower:
     <<: *django
     image: ekata_production_flower
     command: /start-flower
     environment:
-      - TZ=Asia/Colombo"
+      - TZ=Asia/Colombo
