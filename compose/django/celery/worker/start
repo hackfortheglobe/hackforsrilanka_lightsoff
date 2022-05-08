@@ -5,4 +5,4 @@ set -o pipefail
 set -o nounset
 
 
-exec celery -A conf.celery.app worker -l INFO
+exec celery -A conf.celery.app worker -l DEBUG
