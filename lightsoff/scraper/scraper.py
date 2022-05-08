@@ -36,7 +36,7 @@ from pdfminer.pdfpage import PDFPage
 from pdfminer.pdfparser import PDFParser
 import urllib3
 
-start_datetime = 0
+start_datetime = datetime.now()
 
 scraperFolder = f"{os.path.dirname(os.path.abspath(__file__))}/"
 tempFolder = f"{scraperFolder}temp/"
@@ -49,6 +49,7 @@ schedulesFileName = 'schedules.json'
 def scrape(last_document_id):
 
     print("Scraper started with param %s." % (last_document_id))
+    global start_datetime
     start_datetime = datetime.now()
 
     try:
