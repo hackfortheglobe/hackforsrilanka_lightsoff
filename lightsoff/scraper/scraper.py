@@ -364,6 +364,8 @@ def extract_places_data(data_dic,all_groups,groups,actual_groups):
             else:
                 final_dic['{}'.format(row[1][0])] = {}
                 for place in row[1][2]:
+                    if not len(place):
+                        continue
                     final_dic['{}'.format(row[1][0])][place] = {'groups':[(group.split()[1])],'feeders':[row[1][1]]}
 
     return final_dic
@@ -421,13 +423,13 @@ def cleaned_areas(main_dict):
             main_dict[key]['GSS'][count] = gss
             # cleaning Affected Area
             places = [ x.replace("\n", "").strip() for x in places.split(',')]
-            places = [x for x in places if len(x)>3]
             places = list(map(lambda x: re.sub(r'\srd(\b|\s)',' Road ',x,flags=re.IGNORECASE),places))
             places = list(map(lambda x: re.sub(r'\spl(\b|\s)',' Place',x,flags=re.IGNORECASE),places))
             places = [x for x in places if 'colony' not in x.lower() and 'colonies' not in x.lower()]
             places = list(map(lambda x: re.sub(r'(\b|\s)new_','',x,flags=re.IGNORECASE),places))
             places = list(map(lambda x: re.sub(r'[.]?(\w|\s|^\.|\b)+\bleco\b(\w|\s|:|\(|\))+[.]?','',x,flags=re.IGNORECASE),places))
             places = list(map(lambda x: x.capitalize(),places))
+            places = [x for x in places if len(x)>3]
             main_dict[key]['Affected area'][count] = places
             count+=1
     return main_dict
