@@ -36,7 +36,7 @@ from pdfminer.pdfpage import PDFPage
 from pdfminer.pdfparser import PDFParser
 import urllib3
 
-start_datetime = datetime.now()
+start_datetime = 0
 
 scraperFolder = f"{os.path.dirname(os.path.abspath(__file__))}/"
 tempFolder = f"{scraperFolder}temp/"
@@ -49,6 +49,8 @@ schedulesFileName = 'schedules.json'
 def scrape(last_document_id):
 
     print("Scraper started with param %s." % (last_document_id))
+    start_datetime = datetime.now()
+
     try:
         result = run_scraper(last_document_id)
     except Exception as e:
@@ -210,11 +212,11 @@ def extract_schedule_data(data_dic,all_groups,groups,pdf_local_path):
     # converting schedues data from pdf to dictionary form
     schedules = {'schedules':[]}
     date_range = get_dates(pdf_local_path)
-    print("Document schedule tables:",len(all_groups))
+    print(f"Document schedule tables: {len(all_groups)}")
     for table_no in range(0,len(all_groups)):
         #passing rows of current table
         current_table = data_dic['data{}'.format(table_no)]
-        print("Document schedule table #",table_no + 1," has ",len(current_table)," data rows.")
+        print(f"Document schedule table #{table_no + 1} has {len(current_table)} data rows.")
         for index,row in current_table.iterrows():
             joined_row = ' '.join(row.values)
             timings = re.finditer(r'\s\d?\d[:.]\d{2}\s(a.m|p.m)?',joined_row)
@@ -393,7 +395,7 @@ def get_dates(localDocPath):
             end_date = dt.strptime(f'{months[1][0:3]} {dates[1]} 2022','%b %d %Y')
         range = get_dates_between(start_date,end_date)
 
-    print("Document dates: ", range)
+    print(f"Document dates: {range}")
     return range
 
 # Read the days affecting the schedule by reading the first line at the pdf
@@ -409,7 +411,7 @@ def extract_dates_line(localDocPath):
             interpreter.process_page(page)
     pdf_data= output_string.getvalue()
     dates_line = re.findall(r'Demand Management Schedule.+\b\d{2}\D+\b',pdf_data)[0]
-    print ("Document title: ", dates_line)
+    print (f"Document title: {dates_line}")
     return dates_line
 
 # Gives all days between two dates in datetime format

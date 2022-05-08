@@ -234,6 +234,15 @@ def scrapper_data(self):
     place_url = f"{DOMAIN_NAME}/api/create-place/"
     schedule_url = f"{DOMAIN_NAME}/api/create-schedule/"
     api_key = settings.LIGHT_OFF_API_KEY
+    print(f"Places url old: {place_url}")
+    print(f"Schedules url old: {place_url}")
+    print(f"Api key: {api_key}")
+
+    DOMAIN_NAME = f"https://68.183.90.211"
+    place_url = f"{DOMAIN_NAME}/api/create-place/"
+    schedule_url = f"{DOMAIN_NAME}/api/create-schedule/"
+    print(f"Places url new: {place_url}")
+    print(f"Schedules url new: {place_url}")
 
     last_obj = LastProcessedDocument.objects.all().last()
     if last_obj:
@@ -249,6 +258,8 @@ def scrapper_data(self):
         
         # Read places and push them via api (use batching to avoid timeouts)
         place_data = result[0]
+        print(f"Places url old: {place_url}")
+        print(f"Places url new: {place_url}")
         for single_place_data in place_data:
             batch_dict={}
             batch_dict[single_place_data] = place_data[single_place_data]
