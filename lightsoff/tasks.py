@@ -234,27 +234,21 @@ def scrapper_data(self):
     place_url = f"{DOMAIN_NAME}/api/create-place/"
     schedule_url = f"{DOMAIN_NAME}/api/create-schedule/"
     api_key = settings.LIGHT_OFF_API_KEY
-    base_dir = f"{getcwd()}/lightsoff"
-    output_dir = f"{base_dir}/scraper/outputs"
-    output_place = f"{output_dir}/places.json"
-    output_schedule = f"{output_dir}/schedules.json"
-    output_last_id = f"{output_dir}/last_processed_document_id.txt"
 
     last_obj = LastProcessedDocument.objects.all().last()
     if last_obj:
-        scrape(last_obj.last_processed_id)
+        result=scrape(last_obj.last_processed_id)
     else:
-        scrape("")
-    file_exists = exists(output_last_id)
-    if file_exists:
+        result=scrape("")
+    
+    if not result == "" and isinstance(result, list) and len(result)==3:
         headers = {}
         headers = CaseInsensitiveDict()
         headers["Content-Type"] = "application/json"
         headers["Authorization"] = f"Api-Key {api_key}"
         
         # Read places and push them via api (use batching to avoid timeouts)
-        with open(output_place) as f:
-            place_data = json.load(f)
+        place_data = result[0]
         for single_place_data in place_data:
             batch_dict={}
             batch_dict[single_place_data] = place_data[single_place_data]
@@ -263,8 +257,7 @@ def scrapper_data(self):
         place_data = None
 
         # Read schedules and push them via api (use batching to avoid timeouts)
-        with open(output_schedule) as f:
-            schedule_data = json.load(f)
+        schedule_data = result[1]
         schedule_batches = chunks(schedule_data['schedules'], 10)
         for schedule_batch in schedule_batches:
             batch_dict={}
@@ -274,8 +267,7 @@ def scrapper_data(self):
         schedule_data = None
 
         # Read last document id and push them via api
-        with open(output_last_id) as f:
-            last_processed_id = f.read()
+        last_processed_id = result[2]
         if last_obj:
             last_obj.last_processed_id = last_processed_id
             last_obj.save()
@@ -283,13 +275,9 @@ def scrapper_data(self):
             LastProcessedDocument.objects.create(last_processed_id=last_processed_id)
         last_processed_id = None
 
-        # Remove outputs files for next run
-        remove(output_place)
-        remove(output_schedule)
-        remove(output_last_id)
         print("Data successfully inserted")
     else:
-        print("Data already exists")
+        print("Data already exists or wrong response from scraper")
         return None
     
 def chunks(lst, n):
