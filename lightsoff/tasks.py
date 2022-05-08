@@ -1,4 +1,5 @@
 import datetime
+import socket
 from conf.celery import app
 from django.core.mail import send_mail
 from datetime import timedelta
@@ -234,15 +235,9 @@ def scrapper_data(self):
     place_url = f"{DOMAIN_NAME}/api/create-place/"
     schedule_url = f"{DOMAIN_NAME}/api/create-schedule/"
     api_key = settings.LIGHT_OFF_API_KEY
-    print(f"Places url old: {place_url}")
-    print(f"Schedules url old: {place_url}")
-    print(f"Api key: {api_key}")
-
-    DOMAIN_NAME = f"https://68.183.90.211"
-    place_url = f"{DOMAIN_NAME}/api/create-place/"
-    schedule_url = f"{DOMAIN_NAME}/api/create-schedule/"
-    print(f"Places url new: {place_url}")
-    print(f"Schedules url new: {place_url}")
+    print(f"Places url: {place_url}")
+    print(f"Schedules url: {place_url}")
+    print(f"My fully qualified domain name: {socket.getfqdn()}")    
 
     last_obj = LastProcessedDocument.objects.all().last()
     if last_obj:
