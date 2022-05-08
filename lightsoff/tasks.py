@@ -231,7 +231,7 @@ from os import getcwd, remove
 
 @app.task(bind=True, max_retries=0)
 def scrapper_data(self):
-    DOMAIN_NAME = f"https://{settings.DOMAIN_NAME}"
+    DOMAIN_NAME = f"https://traefik"
     place_url = f"{DOMAIN_NAME}/api/create-place/"
     schedule_url = f"{DOMAIN_NAME}/api/create-schedule/"
     api_key = settings.LIGHT_OFF_API_KEY
