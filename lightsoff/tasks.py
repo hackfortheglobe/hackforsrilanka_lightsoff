@@ -235,8 +235,8 @@ def scrapper_data(self):
     place_url = f"{DOMAIN_NAME}/api/create-place/"
     schedule_url = f"{DOMAIN_NAME}/api/create-schedule/"
     api_key = settings.LIGHT_OFF_API_KEY
-    print(f"Places url: {place_url}")
-    print(f"Schedules url: {place_url}")
+    print(f"Internal API url for claces: {place_url}")
+    print(f"Internal API url for schedules: {schedule_url}")
     print(f"My fully qualified domain name: {socket.getfqdn()}")    
 
     last_obj = LastProcessedDocument.objects.all().last()
@@ -253,13 +253,13 @@ def scrapper_data(self):
         
         # Read places and push them via api (use batching to avoid timeouts)
         place_data = result[0]
-        print(f"Places url old: {place_url}")
-        print(f"Places url new: {place_url}")
         for single_place_data in place_data:
             batch_dict={}
             batch_dict[single_place_data] = place_data[single_place_data]
             batch_string = json.dumps(batch_dict)
-            requests.post(url=place_url, headers=headers, data=batch_string, verify=False)
+            print(f"Calling api: {place_url}")
+            response=requests.post(url=place_url, headers=headers, data=batch_string, verify=False)
+            print(f"Response from api: {response}")
         place_data = None
 
         # Read schedules and push them via api (use batching to avoid timeouts)
@@ -269,15 +269,19 @@ def scrapper_data(self):
             batch_dict={}
             batch_dict['schedules'] = schedule_batch
             batch_string = json.dumps(schedule_data)
-            requests.post(url=schedule_url, headers=headers, data=batch_string, verify=False)
+            print(f"Calling api: {schedule_url}")
+            response=requests.post(url=schedule_url, headers=headers, data=batch_string, verify=False)
+            print(f"Response from api: {response}")
         schedule_data = None
 
         # Read last document id and push them via api
         last_processed_id = result[2]
         if last_obj:
+            print("Updating LastProcessedDocument")
             last_obj.last_processed_id = last_processed_id
             last_obj.save()
         else:
+            print("Creating LastProcessedDocument")
             LastProcessedDocument.objects.create(last_processed_id=last_processed_id)
         last_processed_id = None
 
