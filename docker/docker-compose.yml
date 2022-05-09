@@ -1,0 +1,62 @@
+version: "3"
+services:
+  db:
+    image: postgres
+    restart: always
+    environment:
+      - POSTGRES_DB=${DB_NAME}
+      - POSTGRES_USER=${DB_USER}
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data/
+  redis:
+    image: redis:6.2.4-alpine
+  web:
+    build:
+      context: '../'
+    expose:
+      - "8000"
+    ports:
+      - "8000:8000"
+    links:
+      - "redis:redis"
+    command: 'sh -c "/app/docker/entrypoint.sh && exec python3 manage.py runserver 0.0.0.0:8000"'
+    volumes:
+      - ../:/app
+    stdin_open: True
+    tty: True
+    depends_on:
+      - db
+    
+  celery-worker:
+    build:
+      context: ../
+    volumes:
+      - ../:/app
+    command: celery -A conf worker -l info
+    environment:
+      - CELERY_BROKER=$REDIS_URL
+      - CELERY_BACKEND=$REDIS_URL
+
+    depends_on:
+      - db
+      - web
+      - redis
+  celery-beat:
+    build:
+      context: ../
+    volumes:
+      - ../:/app
+    command: celery -A conf beat -l info
+    environment:
+      - CELERY_BROKER=$REDIS_URL
+      - CELERY_BACKEND=$REDIS_URL
+    depends_on:
+      - db
+      - web
+      - redis
+      - celery-worker
+volumes:
+  postgres_data:
+
+

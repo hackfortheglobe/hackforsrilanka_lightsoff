@@ -93,7 +93,13 @@ WSGI_APPLICATION = "conf.wsgi.application"
 # Database
 DATABASES = {
     # read os.environ['DATABASE_URL']
-    "default": env.db(),
+    "default": {'ENGINE': 'django.db.backends.postgresql',
+                'NAME': env("DB_NAME"),
+                'USER': env("DB_USER"),
+                'PASSWORD': env("DB_PASSWORD"),
+                'HOST': env("DB_HOST"),
+                'PORT': env("DB_PORT", cast=int, default=5432),
+            },
 }
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 

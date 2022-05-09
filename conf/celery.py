@@ -10,6 +10,8 @@ app = Celery("lightsoff")
 app.config_from_object("django.conf:settings")
 app.autodiscover_tasks(lambda: settings.INSTALLED_APPS)
 
+app.conf.update(worker_max_memory_per_child=16000,
+                worker_max_tasks_per_child=1)
 
 @app.task(bind=True)
 def debug_task(self):
