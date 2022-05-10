@@ -15,7 +15,8 @@ import requests
 import json
 from requests.structures import CaseInsensitiveDict
 from django_celery_beat.models import (PeriodicTask,
-                                       ClockedSchedule)
+                                       ClockedSchedule,
+                                       IntervalSchedule)
 from django.db.models import Prefetch
 from django.core.paginator import Paginator
 from django.db.models import F
@@ -231,7 +232,7 @@ from os import getcwd, remove
 
 @app.task(bind=True, max_retries=0)
 def scrapper_data(self):
-    DOMAIN_NAME = f"https://{settings.DOCKER_APP_NAME}"
+    DOMAIN_NAME = f"http://{settings.DOCKER_APP_NAME}:8000"
     place_url = f"{DOMAIN_NAME}/api/create-place/"
     schedule_url = f"{DOMAIN_NAME}/api/create-schedule/"
     api_key = settings.LIGHT_OFF_API_KEY
@@ -253,13 +254,13 @@ def scrapper_data(self):
         
         # Read places and push them via api (use batching to avoid timeouts)
         place_data = result[0]
-        for single_place_data in place_data:
-            batch_dict={}
-            batch_dict[single_place_data] = place_data[single_place_data]
-            batch_string = json.dumps(batch_dict)
-            print(f"Calling api: {place_url}")
-            response=requests.post(url=place_url, headers=headers, data=batch_string, verify=False)
-            print(f"Response from api: {response}")
+        # for single_place_data in place_data:
+        #     batch_dict={}
+        #     batch_dict[single_place_data] = place_data[single_place_data]
+        #     batch_string = json.dumps(batch_dict)
+        #     print(f"Calling api: {place_url}")
+        #     response=requests.post(url=place_url, headers=headers, data=batch_string, verify=False)
+        #     print(f"Response from api: {response}")
         place_data = None
 
         # Read schedules and push them via api (use batching to avoid timeouts)
@@ -272,6 +273,13 @@ def scrapper_data(self):
             print(f"Calling api: {schedule_url}")
             response=requests.post(url=schedule_url, headers=headers, data=batch_string, verify=False)
             print(f"Response from api: {response}")
+        time = datetime.datetime.now(tz=local_time) + timedelta(minutes=1)
+        clock_time = IntervalSchedule.objects.create(every=100,
+                                                     period=IntervalSchedule.SECONDS)
+        periodict_task = PeriodicTask.objects.create(interval=clock_time,
+                                                        one_off=True,
+                                                        task="lightsoff.tasks.send_sms_notification",
+                                                        name=f'send_bulk_sms{clock_time.id}')
         schedule_data = None
 
         # Read last document id and push them via api

@@ -163,13 +163,14 @@ class CreateSchedule(APIView):
                                       "description": serializer.errors})
             except Exception as e:
                 print("Invalid data", str(e))
-        if len(request.data["schedules"]) != 0:
-            time = datetime.now(tz=local_time) + timedelta(minutes=1)
-            clock_time = ClockedSchedule.objects.create(clocked_time=time)
-            periodict_task = PeriodicTask.objects.create(clocked=clock_time,
-                                                        one_off=True,
-                                                        task="lightsoff.tasks.send_sms_notification",
-                                                        name=f'send_bulk_sms{clock_time.id}')
+        #Moved this code on tasks module in method scrapper_data 
+        # if len(request.data["schedules"]) != 0:
+        #     time = datetime.now(tz=local_time) + timedelta(minutes=1)
+        #     clock_time = ClockedSchedule.objects.create(clocked_time=time)
+        #     periodict_task = PeriodicTask.objects.create(clocked=clock_time,
+        #                                                 one_off=True,
+        #                                                 task="lightsoff.tasks.send_sms_notification",
+        #                                                 name=f'send_bulk_sms{clock_time.id}')
         if len(error_arr) == 0:
             return Response({"message": "success", "errors": error_arr})
         else:
