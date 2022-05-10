@@ -1,7 +1,7 @@
 version: "3"
 services:
   db:
-    image: postgres
+    image: postgres:14.2-alpine
     restart: always
     environment:
       - POSTGRES_DB=${DB_NAME}
@@ -23,8 +23,10 @@ services:
     command: 'sh -c "/app/docker/entrypoint.sh && exec python3 manage.py runserver 0.0.0.0:8000"'
     volumes:
       - ../:/app
-    stdin_open: True
-    tty: True
+    environment:
+      - POSTGRES_DB=${DB_NAME}
+      - POSTGRES_USER=${DB_USER}
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
     depends_on:
       - db
     
@@ -37,7 +39,9 @@ services:
     environment:
       - CELERY_BROKER=$REDIS_URL
       - CELERY_BACKEND=$REDIS_URL
-
+      - POSTGRES_DB=${DB_NAME}
+      - POSTGRES_USER=${DB_USER}
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
     depends_on:
       - db
       - web
@@ -51,6 +55,9 @@ services:
     environment:
       - CELERY_BROKER=$REDIS_URL
       - CELERY_BACKEND=$REDIS_URL
+      - POSTGRES_DB=${DB_NAME}
+      - POSTGRES_USER=${DB_USER}
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
     depends_on:
       - db
       - web
@@ -58,5 +65,3 @@ services:
       - celery-worker
 volumes:
   postgres_data:
-
-
