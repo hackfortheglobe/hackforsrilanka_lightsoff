@@ -254,13 +254,13 @@ def scrapper_data(self):
         
         # Read places and push them via api (use batching to avoid timeouts)
         place_data = result[0]
-        # for single_place_data in place_data:
-        #     batch_dict={}
-        #     batch_dict[single_place_data] = place_data[single_place_data]
-        #     batch_string = json.dumps(batch_dict)
-        #     print(f"Calling api: {place_url}")
-        #     response=requests.post(url=place_url, headers=headers, data=batch_string, verify=False)
-        #     print(f"Response from api: {response}")
+        for single_place_data in place_data:
+            batch_dict={}
+            batch_dict[single_place_data] = place_data[single_place_data]
+            batch_string = json.dumps(batch_dict)
+            print(f"Calling api: {place_url}")
+            response=requests.post(url=place_url, headers=headers, data=batch_string, verify=False)
+            print(f"Response from api: {response}")
         place_data = None
 
         # Read schedules and push them via api (use batching to avoid timeouts)
