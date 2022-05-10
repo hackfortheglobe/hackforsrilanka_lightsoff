@@ -11,7 +11,7 @@ ENV PYTHONDONTWRITEBYTECODE=1\
 WORKDIR /app
 
 RUN pip install "poetry==$POETRY_VERSION"
-RUN apt-get update && apt-get install -y gcc libffi-dev g++ libpq-dev python3-dev
+RUN apt-get update && apt-get install -y gcc libffi-dev g++ libpq-dev python3-dev ghostscript
 
 # Project libraries and User Creation
 
