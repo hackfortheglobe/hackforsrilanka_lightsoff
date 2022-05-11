@@ -5,5 +5,4 @@ def run():
 	if obj:
 		obj.last_run_at = None
 		obj.save()
-		PeriodicTasks.changed(obj)
-		print("############Call")
+		print("----------Periodict Task Script called------------")

@@ -7,6 +7,7 @@ from django.utils import timezone
 from django.conf import settings
 import dateutil.parser
 from .models import *
+from django.utils.timezone import localtime
 
 # from lightsoff.models import GROUP_CHOICES, Subscriber
 from lightsoff.utils import *
@@ -121,9 +122,9 @@ def send_sms_notification(self):
             current_page = paginator.get_page(page_no)
             current_qs = current_page.object_list
             tx_id = generate_uniqe_id()
-            from_date = schedule_data.starting_period.strftime('%b %-dth')
-            from_time = schedule_data.starting_period.strftime('%I:%S %p')
-            to_time = schedule_data.ending_period.strftime('%I:%S %p')
+            from_date = localtime(schedule_data.starting_period).strftime('%b %-dth')
+            from_time = localtime(schedule_data.starting_period).strftime('%I:%S %p')
+            to_time = localtime(schedule_data.ending_period).strftime('%I:%S %p')
             message = f"{from_date} from {from_time} to {to_time} [Group {schedule_data.group_name.name} power cut schedule].To unsubscribe go to {link}"
             numbers = list(current_qs)
             resp = send_sms(numbers, message, tx_id)
@@ -182,9 +183,9 @@ def send_sms_to_batch(self):
         ## it will call the api until transaction id is unique.
         if batch_data.is_batch_run:
             continue
-        from_date = batch_data.schedule.starting_period.strftime('%b %-dth')
-        from_time = batch_data.schedule.starting_period.strftime('%I:%S %p')
-        to_time = batch_data.schedule.ending_period.strftime('%I:%S %p')
+        from_date = localtime(batch_data.schedule.starting_period).strftime('%b %-dth')
+        from_time = localtime(batch_data.schedule.starting_period).strftime('%I:%S %p')
+        to_time = localtime(batch_data.schedule.ending_period).strftime('%I:%S %p')
         count_number = 1
         while True:
             tx_id = generate_uniqe_id()
@@ -274,12 +275,11 @@ def scrapper_data(self):
             response=requests.post(url=schedule_url, headers=headers, data=batch_string, verify=False)
             print(f"Response from api: {response}")
         time = datetime.datetime.now(tz=local_time) + timedelta(minutes=1)
-        clock_time = IntervalSchedule.objects.create(every=100,
-                                                     period=IntervalSchedule.SECONDS)
-        periodict_task = PeriodicTask.objects.create(interval=clock_time,
-                                                        one_off=True,
-                                                        task="lightsoff.tasks.send_sms_notification",
-                                                        name=f'send_bulk_sms{clock_time.id}')
+        clock_time = ClockedSchedule.objects.create(clocked_time=time)
+        PeriodicTask.objects.create(clocked=clock_time,
+                                    one_off=True,
+                                    task="lightsoff.tasks.send_sms_notification",
+                                    name=f'send_bulk_sms{clock_time.id}')
         schedule_data = None
 
         # Read last document id and push them via api

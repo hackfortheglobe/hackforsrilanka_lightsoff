@@ -200,6 +200,11 @@ def send_sms(numbers, message, tx_id):
     resp = requests.post(url, headers=headers, data=json.dumps(data))
     return resp
 
+def convert_into_datetime(date_time_data):
+    naive = datetime.datetime.strptime(date_time_data,
+                                       '%Y-%m-%d %H:%M')
+    local_dt = local_time.localize(naive, is_dst=None)
+    return local_dt
 
 def generate_uniqe_id():
     digits = "0123456789"

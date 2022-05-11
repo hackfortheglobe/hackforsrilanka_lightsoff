@@ -6,33 +6,6 @@ from django_celery_beat.models import PeriodicTask
 import uuid
 from django.contrib.postgres.fields import ArrayField
 
-GROUP_CHOICES = [
-    ("A", "A"),
-    ("B", "B"),
-    ("C", "C"),
-    ("D", "D"),
-    ("E", "E"),
-    ("F", "F"),
-    ("G", "G"),
-    ("H", "H"),
-    ("I", "I"),
-    ("J", "J"),
-    ("K", "K"),
-    ("L", "L"),
-    ("M", "M"),
-    ("N", "N"),
-    ("O", "O"),
-    ("P", "P"),
-    ("Q", "Q"),
-    ("R", "R"),
-    ("S", "S"),
-    ("T", "T"),
-    ("U", "U"),
-    ("V", "V"),
-    ("W", "W"),
-    ("CC1", "CC1"),
-]
-
 
 def generate_random_token():
     return get_random_string(length=32)

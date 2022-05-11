@@ -153,8 +153,13 @@ class CreateSchedule(APIView):
                 if not group_name:
                     group_name = GroupName.objects.create(name=data.get("group"))
                 request.data["schedules"][index]["group_name"] = group_name.id
-                data["starting_period"] = data.get("starting_period")
-                data["ending_period"] = data.get("ending_period")
+                data["starting_period"] = convert_into_datetime(data.get("starting_period"))
+                data["ending_period"] = convert_into_datetime(data.get("ending_period"))
+                schedule_obj = ScheduleGroup.objects.filter(group_name=group_name,
+                                                            starting_period=data.get("starting_period"),
+                                                            ending_period=data.get("ending_period")).first()
+                if schedule_obj:
+                    continue
                 serializer = CreateScheduleSerializer(data=data)
                 if serializer.is_valid():
                     serializer.save()
