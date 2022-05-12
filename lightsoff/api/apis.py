@@ -277,23 +277,23 @@ class PlaceView(APIView):
                 areaCount = areaCount+len(request.data[gss_data])
                 print ("#",indexCount, ": Areas for ", gss_data, " are: ", len(request.data[gss_data]))
                 for area_data in request.data[gss_data]:
-                    suburb_data = SuburbPlace.objects.filter(gss__iexact=gss_data,
-                                                             area__iexact=area_data).first()
-                    suburb = ""
-                    if suburb_data:
-                        suburb = suburb_data.suburb
+                    district_data = DistrictPlace.objects.filter(gss__iexact=gss_data,
+                                                                 area__iexact=area_data).first()
+                    district = ""
+                    if district_data:
+                        district = district_data.district
                     place_obj = Place.objects.filter(gss__iexact=gss_data,
                                                      area__iexact=area_data
                                                      ).first()
                     if not place_obj:
                         place_obj = Place.objects.create(gss=gss_data,
-                                                         suburb=suburb,
+                                                         district=district,
                                                          area=area_data,
                                                          feeders=request.data[gss_data][area_data]["feeders"])
                         createCount = createCount+1
                     else:
                         place_obj.area = area_data
-                        place_obj.suburb = suburb
+                        place_obj.district = district
                         place_obj.feeders = request.data[gss_data][area_data]["feeders"]
                         place_obj.save()
                         updateCount = updateCount+1
@@ -316,24 +316,24 @@ class PlaceView(APIView):
 class GetAllSubscribedUser(APIView):
     def get(self, request):
         user_data = Subscriber.objects.all().order_by("-id")
-        serializer = UserSubscriptionSerializer(user_data, many=True)
+        serializer = GetAllSubscribedUserSerializer(user_data, many=True)
         return Response({"message": "", "data": serializer.data})
 
 
-class SearchBySuburb(APIView):
+class SearchByDistrict(APIView):
     def get(self, request):
-        suburb = request.query_params.get("suburb", None)
-        if suburb:
-            suburb_data = Place.objects.filter(suburb__iexact=suburb).order_by("gss", "area")
-            serializer = CreatePlaceSerializer(suburb_data, many=True)
+        district = request.query_params.get("district", None)
+        if district:
+            district_data = Place.objects.filter(district__iexact=district).order_by("gss", "area")
+            serializer = DistrictSerializer(district_data, many=True)
             return Response({"message":"", "data": serializer.data})
         else:
             return Response({"message": "",
-                             "errors": "suburb parameter is required."},
+                             "errors": "district parameter is required."},
                             status=status.HTTP_400_BAD_REQUEST)
 
 
-class GetAllSuburb(APIView):
+class GetAllDistrict(APIView):
     def get(self, request):
-        all_suburb = SuburbPlace.objects.all().order_by("suburb").values_list("suburb", flat=True).distinct()
-        return Response({"message": "", "data": all_suburb})
+        all_district = DistrictPlace.objects.all().order_by("district").values_list("district", flat=True).distinct()
+        return Response({"message": "", "data": all_district})

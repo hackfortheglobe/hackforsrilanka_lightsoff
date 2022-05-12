@@ -123,8 +123,8 @@ def send_sms_notification(self):
             current_qs = current_page.object_list
             tx_id = generate_uniqe_id()
             from_date = localtime(schedule_data.starting_period).strftime('%b %-dth')
-            from_time = localtime(schedule_data.starting_period).strftime('%I:%S %p')
-            to_time = localtime(schedule_data.ending_period).strftime('%I:%S %p')
+            from_time = localtime(schedule_data.starting_period).strftime('%I:%M %p')
+            to_time = localtime(schedule_data.ending_period).strftime('%I:%M %p')
             message = f"{from_date} from {from_time} to {to_time} [Group {schedule_data.group_name.name} power cut schedule].To unsubscribe go to {link}"
             numbers = list(current_qs)
             resp = send_sms(numbers, message, tx_id)
@@ -184,8 +184,8 @@ def send_sms_to_batch(self):
         if batch_data.is_batch_run:
             continue
         from_date = localtime(batch_data.schedule.starting_period).strftime('%b %-dth')
-        from_time = localtime(batch_data.schedule.starting_period).strftime('%I:%S %p')
-        to_time = localtime(batch_data.schedule.ending_period).strftime('%I:%S %p')
+        from_time = localtime(batch_data.schedule.starting_period).strftime('%I:%M %p')
+        to_time = localtime(batch_data.schedule.ending_period).strftime('%I:%M %p')
         count_number = 1
         while True:
             tx_id = generate_uniqe_id()
