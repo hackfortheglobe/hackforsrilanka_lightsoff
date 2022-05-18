@@ -10,6 +10,7 @@
 '''
 
 from calendar import c
+import copy
 from pickle import FALSE, TRUE
 from lxml import html
 import requests
@@ -35,6 +36,7 @@ from pdfminer.pdfinterp import PDFResourceManager, PDFPageInterpreter
 from pdfminer.pdfpage import PDFPage
 from pdfminer.pdfparser import PDFParser
 import urllib3
+import fitz
 
 start_datetime = datetime.now()
 
@@ -92,6 +94,7 @@ def run_scraper(last_document_id):
     download_file_from_google_drive(new_document_id, localDocPath)
 
     # Extract data
+    print("Extracting data...")
     extracted_data = extract_data(localDocPath)
     json_places = extracted_data[0]
     json_schedules = extracted_data[1]
@@ -170,14 +173,16 @@ def save_response_content(response, destination):
 
 def extract_data(pdf_local_path):
     # Reading the pdf file
+    print("Reading the PDF with camelot")
     tables = camelot.read_pdf(pdf_local_path,pages='all')
 
+    print("Preparing structures")
     # Prepare dictionary to store all tables in pandas dataframe with keys assigned as data0,data1 and so on..
     # for all tables found by camelot
     data_dic = {}
     # getting all the tables from pdf file
     for no in range(0,len(tables)):
-        data_dic['data{}'.format(no)] = tables[no].df
+        data_dic['data{}'.format(no)] = copy.copy(tables[no].df)
 
     # Retrieve group info in each table dataFrame by looping through it. 'x' is column no, 'no' is table no
     all_groups = [] # all groups that are indexed in starting pages
@@ -189,10 +194,12 @@ def extract_data(pdf_local_path):
                     actual_groups.append((no,x))
                 else:
                     all_groups.append((no,x))
+
     # Setting columns for main(all) grouping data
     for y in range(0,len(all_groups)):
         data_dic['data{}'.format(y)].columns  = data_dic['data{}'.format(y)].iloc[0]
         data_dic['data{}'.format(y)].drop(0,inplace=True)
+
     # look for what groups we have by looping through columns data
     groups =[]
     for table_no in range(0,len(all_groups)):
@@ -203,8 +210,11 @@ def extract_data(pdf_local_path):
                     groups.append(letter)
     groups = sorted(list(set(groups)))
 
+    print("Extracting schedules...")
     schedules = extract_schedule_data(data_dic,all_groups,groups,pdf_local_path)
-    places = extract_places_data(data_dic,all_groups,groups,actual_groups)
+    
+    print("Extracting places...")
+    places = extract_places_data(pdf_local_path, tables)
 
     return [places,schedules]
 
@@ -280,102 +290,193 @@ def timeformat_convert24_hr(timings):
         return timings
 
 
-def extract_places_data(data_dic,all_groups,groups,actual_groups):
-    main_dict = {}
-    group_count = 0
-    not_found=True
-    # settings indexes,removing extra row, assigning groups
-    for table_no in range(len(all_groups),len(data_dic)):
-        # it checks whether tht table has 3 cols
-        # it rules out of adding unsymmetrical data to group which just got processed
-        if data_dic['data{}'.format(table_no)].shape[1] != 3 or not_found:
-            col_check=[]
-            for col in data_dic['data{}'.format(table_no)].iloc[0].values:
-                if 'GSS' in col:
-                    col_check.append(True)
-                elif 'Affected' in col:
-                    col_check.append(True)
-                elif 'Feeder' in col:
-                    col_check.append(True)
-                else:
-                    col_check.append(False)
-            if all(col_check):
-                not_found =False
-            else:
-                not_found=True
-                continue
+def extract_places_data(pdf_local_path, tables):
+    
+    data_dic = {}
+    for no in range(0, len(tables)):
+        data_dic['{}'.format(no)] = tables[no].df
 
-        if data_dic['data{}'.format(table_no)].shape[1] == 3:
-            # it checks whether the data is countinuing for last group or data for new group
-            col_check=[]
-            for col in data_dic['data{}'.format(table_no)].iloc[0].values:
-                if 'GSS' in col:
-                    col_check.append(True)
-                elif 'Affected' in col:
-                    col_check.append(True)
-                elif 'Feeder' in col:
-                    col_check.append(True)
-                else:
-                    col_check.append(False)
-            # Starting a New Group
-            if all(col_check):
-                data_dic['data{}'.format(table_no)].columns  = ['GSS','Feeder No','Affected area']
-                data_dic['data{}'.format(table_no)].drop(0,inplace=True)
-                main_dict['Group {}'.format(groups[group_count])] = data_dic['data{}'.format(table_no)]
-                last_group = 'Group {}'.format(groups[group_count])
-                group_count+=1
-            # Starting new group for data whose groups are not indexed on above pages
-            elif actual_groups:
-                if table_no>=actual_groups[0][0] and table_no<=actual_groups[-1][0]:
-                    data_dic['data{}'.format(table_no)].columns  = ['GSS','Feeder No','Affected area']
-                    main_dict[data_dic['data{}'.format(table_no)].iloc[0].values[0]]= data_dic['data{}'.format(table_no)][2:]
+    # validkeys list determines keys from data_dic which have group id values in group dataframe
+    validkeys = []
+    for keys in data_dic:
+        x = 'GSS' in data_dic[keys][0].unique()
+        validkeys.append([int(keys), x])
+    temp = []
+    while validkeys:
+        x = validkeys.pop()
+        if x[1] == True:
+            temp.append(x)
+    # li grabs first value of "true" where 'GSS' is column header
+    li = list(reversed(temp.copy()))
+    valididx = []
+    for x in li:
+        valididx.append(x[0])
 
-                    last_group = data_dic['data{}'.format(table_no)].iloc[0].values[0]
-            # it is concatenating continous data of last group(Note: one filter only: which is.. it should have 3 columns
-            #  no way of knowing what data is on current page.)
-            else:
-                # setting index for this
-                data_dic['data{}'.format(table_no)].columns = ['GSS','Feeder No','Affected area']
-                main_dict[last_group] = pd.concat([main_dict[last_group],data_dic['data{}'.format(table_no)]])
+    # Extract all pages and read text values of pages...  Current exceptions for output containing
+    # "group" are:  Group_*[A-Z], but other exceptions may need to be added depending on
+    # possible variations of pdf report being scraped
+    pages = []
+    print("Reading pdf text with PyMuPDF (fitz)...")
+    with fitz.open(pdf_local_path) as doc:
+        text = ""
+        for page in doc:
+            text = page.get_text()
+            pages.append(text)
+    groups = []
+    for index, group in enumerate(pages):
+        x = re.findall(r"Group *[A-Z]", group)
+        y = [index+1, x]
+        groups.append(y)
 
-    # reseting index to make data continous
-    main_dict = reset_index(main_dict)
-    # fixing multiple rows in same row
-    main_dict = fix_multiple_row(main_dict)
-    # cleaning areas here
-    main_dict = cleaned_areas(main_dict)
+    # Takes scraped data and drops into dataframe. Fills null values following first mention of 
+    # "Group_*[A-Z]" (to account for groups that appear on multiple consecutive pages
+    df = pd.DataFrame(groups)
 
-    # Creating final output as json dictionary
-    final_dic = {}
-    for group,table in main_dict.items():
-        for row in table.iterrows():
-            # checking if GSS is already stored in as keys of final_dic
-            if row[1][0] in final_dic.keys():
-                # looping through places to save data
-                for place in row[1][2]:
-                    # skipping place which is empty after cleaning the place
-                    if not len(place):
-                        continue
-                    # checking if place is already stored or not.. as key of District
-                    if place in final_dic['{}'.format(row[1][0])].keys():
-                        final_dic['{}'.format(row[1][0])][place]['groups'].append(group.split()[1])
-                        final_dic['{}'.format(row[1][0])][place]['feeders'].append(row[1][1])
+    df['group'] = df[1]
+    df['group'] = df['group'].astype(str).apply(lambda x: x.replace(
+        '[', '').replace('Group', '').replace("'", '').replace(']', ''))
+    df['page'] = df[0]
+    df = df.drop(columns=[0, 1])
 
-                        # saving only unique groups and feeder No
-                        final_dic['{}'.format(row[1][0])][place]['groups'] = list(set(final_dic['{}'.format(row[1][0])][place]['groups']))
-                        final_dic['{}'.format(row[1][0])][place]['feeders'] = list(set(final_dic['{}'.format(row[1][0])][place]['feeders']))
+    df = df[['page', 'group']]
 
-                    # if place is not saved yet
-                    else:
-                        final_dic['{}'.format(row[1][0])][place] = {'groups':[(group.split()[1])],'feeders':[row[1][1]]}
-            else:
-                final_dic['{}'.format(row[1][0])] = {}
-                for place in row[1][2]:
-                    if not len(place):
-                        continue
-                    final_dic['{}'.format(row[1][0])][place] = {'groups':[(group.split()[1])],'feeders':[row[1][1]]}
+    z = df['group'].unique().tolist()
+    df['group'][df['group'] == z[0]] = np.NaN
+    df['group'] = df['group'].fillna(method='ffill')
 
-    return final_dic
+    df = df.dropna(axis=0)
+
+    # Re-performs data_dic iteration but includes only valid data tables and concats tables with 
+    # multiple pages. Uses range of valididx min (first valid table to be used in output) and 
+    # len(tables) (for range of tables to be used in output)
+    dfx = pd.DataFrame()
+    dfz = pd.DataFrame()
+    data_dic1 = {}
+    n = min(valididx)-1
+
+    for no in range(min(valididx), len(tables)):
+        data_dic1['{}'.format(no)] = tables[no].df
+
+    for keys in data_dic1:
+        if (data_dic1[keys][0][0] == 'GSS') == True:
+            n = n+1
+            dfz = pd.DataFrame.from_dict(data_dic1[keys])
+            x = str(df[df['page'] == n]['group'].tolist())
+            dfz = dfz.assign(group=x)
+            dfx = pd.concat([dfx, dfz], axis=0, ignore_index=True)
+        elif (data_dic1[keys][0][1] == 'GSS') == True:
+            n = n+1
+            dfz = pd.DataFrame.from_dict(data_dic1[keys])
+            x = str(df[df['page'] == n]['group'].tolist())
+            dfz = dfz.assign(group=x)
+            dfx = pd.concat([dfx, dfz], axis=0, ignore_index=True)
+        elif (data_dic1[keys][0][1].isnumeric()):
+            n = n
+        else:
+            n = n+1
+            dfz = pd.DataFrame.from_dict(data_dic1[keys])
+            x = str(df[df['page'] == n]['group'].tolist())
+            dfx = pd.concat([dfx, dfz], axis=0, ignore_index=True)
+
+    # Cleaning / Filling empties / Dropping null values
+    dfx = dfx.fillna(method='ffill')
+    dfx['group'] = dfx['group'].astype(str).apply(
+        lambda x: x.replace('[', '').replace("'", '').replace(']', ''))
+    dfx['group'] = dfx['group'].replace(to_replace='', value=np.NaN)
+    dfx['group'] = dfx['group'].fillna(method='ffill')
+
+    # Reformatting DF for cleaner output
+    df = pd.DataFrame()
+    df['GSS'] = dfx[0]
+    df['Feeder No'] = dfx[1]
+    df['Affected Area'] = dfx[2]
+    df['Group'] = dfx['group']
+    df = df[df['GSS'] != 'GSS']
+    df['GSS'] = df['GSS'].replace(to_replace='\\nra', value='', regex=True)
+    df['GSS'] = df['GSS'].replace(to_replace='\\na', value='', regex=True)
+    df['GSS'] = df['GSS'].replace(to_replace='\\n', value='', regex=True)
+    df['GSS'] = df['GSS'].replace(to_replace='', value=np.NaN)
+    df['GSS'] = df['GSS'].fillna(method='ffill')
+    df['GSS'].replace(to_replace=r'(?i)(\b|\s)new_', value='',
+                    regex=True,  inplace=True)
+    df['GSS'] = df['GSS'].replace(
+        to_replace=r'(?i)Sri_jpura', value='Sri Jayewardenepura', regex=True)
+    df['GSS'] = df['GSS'].replace(
+        to_replace=r'(?i)Nuwara_Eliya', value='Nuwara Eliya', regex=True)
+    df['GSS'] = df['GSS'].replace(
+        to_replace=r'(?i)Nuwaraeliya', value='Nuwara Eliya', regex=True)
+
+    df['Feeder No'] = df['Feeder No'].replace(to_replace='', value=np.NaN)
+    df['Feeder No'] = df['Feeder No'].fillna(method='ffill')
+
+    df['Affected Area'] = df['Affected Area'].replace(
+        to_replace=' \\n', value='', regex=True)
+    df['Affected Area'] = df['Affected Area'].replace(
+        to_replace='\\n', value='', regex=True)
+
+    df['Affected Area'] = df['Affected Area'].replace(
+        to_replace=r'(?i)\srd(\b|\s)', value=' Road ', regex=True)
+    df['Affected Area'] = df['Affected Area'].replace(
+        to_replace=r'(?i)\spl(\b|\s)', value=' Place ', regex=True)
+    df['Affected Area'] = df['Affected Area'].replace(
+        to_replace=r'(?i)(\b|\s)new_', value='', regex=True)
+    df['Affected Area'] = df['Affected Area'].replace(
+        to_replace=r'(?i)[.]?(\w|\s|^\.|\b)+\bleco\b(\w|\s|:|\(|\))+[.]?', value='', regex=True)
+    df['Affected Area'] = df['Affected Area'].replace(
+        to_replace=r'(?i)\(([portion]+)\)', value='', regex=True)
+
+    # Explode DF w/ string split on Affected Areas, filter out blank values for Affected Areas
+    df["Affected Area"] = df["Affected Area"].str.split(",")
+    df = df.explode("Affected Area").reset_index(drop=True)
+    df["Affected Area"] = df["Affected Area"].str.split("-")
+    df = df.explode("Affected Area").reset_index(drop=True)
+    df = df[df['Affected Area'] != ""]
+
+    df['GSS'] = df['GSS'].str.strip()
+    df['Affected Area'] = df['Affected Area'].str.strip()
+    df['Group'] = df['Group'].str.strip()
+    df['GSS'] = df['GSS'].str.title()
+    df['Affected Area'] = df['Affected Area'].str.capitalize()
+    df = df[df['Affected Area'].str.contains(
+        'colony|colonies', case=False) == False]
+    df = df[df['GSS'].str.contains(
+        'Group|Cc Sub', case=False) == False]
+    df = df[df['GSS'].str.contains(
+        '^Sub', case=False, regex=True) == False]
+
+    df = df[df['GSS'].map(len) > 3]
+    df = df[df['Affected Area'].map(len) > 3]
+    df = df[~df['GSS'].str.isdigit()]
+    # df = df.set_index(['GSS', 'Affected Area', 'Group', 'Feeder No'])
+
+    # Reformat for final json output
+    temp_list = df.to_dict('records')
+    final_dict = {}
+    for item in temp_list:
+        group_name = item['Group']
+        gss_name = item["GSS"]
+        feeder_name = item["Feeder No"]
+        feeding_area = item["Affected Area"]
+
+        if gss_name not in final_dict:
+            final_dict[gss_name] = dict()
+
+        if feeding_area not in final_dict[gss_name]:
+            final_dict[gss_name][feeding_area] = dict()
+
+        if "groups" not in final_dict[gss_name][feeding_area]:
+            final_dict[gss_name][feeding_area]["groups"] = list()
+
+        if "feeders" not in final_dict[gss_name][feeding_area]:
+            final_dict[gss_name][feeding_area]["feeders"] = list()
+
+        if group_name not in final_dict[gss_name][feeding_area]["groups"]:
+            final_dict[gss_name][feeding_area]["groups"].append(group_name)
+
+        if feeder_name not in final_dict[gss_name][feeding_area]["feeders"]:
+            final_dict[gss_name][feeding_area]["feeders"].append(feeder_name)
+
+    return final_dict
 
 # Get the dates affecting the schedule
 def get_dates(localDocPath):
@@ -402,6 +503,7 @@ def get_dates(localDocPath):
 # Read the days affecting the schedule by reading the first line at the pdf
 def extract_dates_line(localDocPath):
     output_string = StringIO()
+    print("Reading pdf text with PdfMiner...")
     with open(localDocPath, 'rb') as in_file:
         parser = PDFParser(in_file)
         doc = PDFDocument(parser)
@@ -421,37 +523,9 @@ def get_dates_between(start, end):
     days = [start + timedelta(days=i) for i in range(delta.days + 1)]
     return days
 
-def cleaned_areas(main_dict):
-    for key,value in main_dict.items():
-        count=0
-        for places,gss in value[['Affected area','GSS']].itertuples(index=False):
-            # cleaning GSS
-            gss = re.sub(r'(\b|\s)new_','',gss.replace("\n", ""),flags=re.IGNORECASE)
-            main_dict[key]['GSS'][count] = gss
-            # cleaning Affected Area
-            places = [ x.replace("\n", "").strip() for x in places.split(',')]
-            places = list(map(lambda x: re.sub(r'\srd(\b|\s)',' Road ',x,flags=re.IGNORECASE),places))
-            places = list(map(lambda x: re.sub(r'\spl(\b|\s)',' Place',x,flags=re.IGNORECASE),places))
-            places = [x for x in places if 'colony' not in x.lower() and 'colonies' not in x.lower()]
-            places = list(map(lambda x: re.sub(r'(\b|\s)new_','',x,flags=re.IGNORECASE),places))
-            places = list(map(lambda x: re.sub(r'[.]?(\w|\s|^\.|\b)+\bleco\b(\w|\s|:|\(|\))+[.]?','',x,flags=re.IGNORECASE),places))
-            places = list(map(lambda x: x.capitalize(),places))
-            places = [x for x in places if len(x)>3]
-            main_dict[key]['Affected area'][count] = places
-            count+=1
-    return main_dict
-
 def reset_index(main_dict):
     for group,table in main_dict.items():
         table.reset_index(drop=True,inplace=True)
-    return main_dict
-
-def fix_multiple_row(main_dict):
-    for table in main_dict.values():
-        table['GSS'][table['GSS']==''] = np.NaN
-        table['Feeder No'][table['Feeder No']==''] = np.NaN
-        table['GSS'].fillna(method='ffill',inplace=True)
-        table['Feeder No'].fillna(method='ffill',inplace=True)
     return main_dict
 
 def validate_extracted_data(json_places, json_schedules):
