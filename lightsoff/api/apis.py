@@ -263,7 +263,6 @@ class SearchSchedulesByPlace(APIView):
 
 class PlaceView(APIView):
     permission_classes = [HasAPIKey]
-    print ("RAFA: PlaceView loaded")
 
     def post(self, request):
         indexCount=0
