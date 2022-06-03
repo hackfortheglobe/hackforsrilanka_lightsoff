@@ -198,6 +198,8 @@ def send_sms(numbers, message, tx_id):
             "msisdn": numbers
             }
     resp = requests.post(url, headers=headers, data=json.dumps(data))
+    print(data)
+    print(resp.json())
     return resp
 
 def convert_into_datetime(date_time_data):

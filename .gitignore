@@ -101,3 +101,6 @@ data/
 
 # celery
 celerybeat-schedule
+
+# scraper
+lightsoff/scraper/temp/

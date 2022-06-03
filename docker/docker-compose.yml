@@ -11,15 +11,26 @@ services:
       - POSTGRES_PASSWORD=${DB_PASSWORD}
     volumes:
       - postgres_data:/var/lib/postgresql/data/
+  pgadmin:
+    container_name: pgadmin4_container
+    image: dpage/pgadmin4
+    restart: always
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD}
+    ports:
+      - "5050:80"
   redis:
     image: redis:6.2.4-alpine
+    restart: always
   web:
     build:
       context: '../'
+    restart: always
     expose:
-      - "8000"
+      - "80"
     ports:
-      - "8000:8000"
+      - "80:8000"
     links:
       - "redis:redis"
     command: 'sh -c "/app/docker/entrypoint.sh && exec python3 manage.py runserver 0.0.0.0:8000"'
@@ -37,6 +48,7 @@ services:
   celery-worker:
     build:
       context: ../
+    restart: always
     volumes:
       - ../:/app
     command: celery -A conf worker -l info
@@ -53,6 +65,7 @@ services:
   celery-beat:
     build:
       context: ../
+    restart: always
     volumes:
       - ../:/app
     command: celery -A conf beat -l info
