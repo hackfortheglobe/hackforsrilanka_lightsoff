@@ -233,15 +233,11 @@ from os import getcwd, remove
 
 @app.task(bind=True, max_retries=0)
 def scrapper_data(self):
-
-    print("SCRAPER TEMPORARILY DISABLED")
-    return
-
     DOMAIN_NAME = f"http://{settings.DOCKER_APP_NAME}:8000"
     place_url = f"{DOMAIN_NAME}/api/create-place/"
     schedule_url = f"{DOMAIN_NAME}/api/create-schedule/"
     api_key = settings.LIGHT_OFF_API_KEY
-    print(f"Internal API url for places: {place_url}")
+    print(f"Internal API url for claces: {place_url}")
     print(f"Internal API url for schedules: {schedule_url}")
     print(f"My fully qualified domain name: {socket.getfqdn()}")    
 
