@@ -10,7 +10,7 @@ ENV PYTHONDONTWRITEBYTECODE=1\
 WORKDIR /app
 
 RUN pip install "poetry==$POETRY_VERSION"
-RUN apt-get update && apt-get install -y gcc libffi-dev g++ libpq-dev python3-dev ghostscript
+RUN apt-get update && apt-get install -y gcc libffi-dev g++ libpq-dev python3-dev ghostscript wget
 
 # install google chrome
 RUN wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | apt-key add -
