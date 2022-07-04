@@ -36,7 +36,7 @@ app.conf.beat_schedule = {
     # },
     'sms_worker': {
         'task': 'lightsoff.tasks.send_sms_notification',
-        'schedule': crontab(hour=9,minute=12),
+        'schedule': crontab(hour=9,minute=25),
 
     },
 }
