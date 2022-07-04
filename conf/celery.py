@@ -29,14 +29,15 @@ app.conf.beat_schedule = {
     #         }
     #     },
 
-    'every-day-eve': {
-        'task': 'lightsoff.tasks.scrapper_data',
-        'schedule': crontab(hour=17,minute=16),
-        # 'schedule': crontab(hour=18,minute=46,day_of_week='mon-fri'),
-        # 'schedule': crontab(hour='9-15/1', minute=15, day_of_week='mon-fri', ),
-        # 'options':{
-        #     'link':signature('datafeed.neeraj_t.live_forex',args=(),kwargs=())
-        # }
+    # 'every-day-eve': {
+    #     'task': 'lightsoff.tasks.scrapper_data',
+    #     'schedule': crontab(hour=17,minute=16),
+    #
+    # },
+    'sms_worker': {
+        'task': 'lightsoff.tasks.send_sms_notification',
+        'schedule': crontab(hour=9,minute=12),
+
     },
 }
 

@@ -1,5 +1,6 @@
 import datetime
 import socket
+from itertools import groupby
 from conf.celery import app
 from django.core.mail import send_mail
 from datetime import timedelta
@@ -98,7 +99,6 @@ from django.db.models import F
 
 @app.task(bind=True, max_retries=0)
 def send_sms_notification(self):
-
     link = f"https://ekata.lk/unsubscribe"
     url = "https://e-sms.dialog.lk/api/v1/sms"
     headers = CaseInsensitiveDict()
@@ -107,7 +107,18 @@ def send_sms_notification(self):
     headers["Content-Type"] = "application/json"
     schedule_group = ScheduleGroup.objects.filter(is_run=False,
                                                   starting_period__gte=datetime.datetime.now(tz=local_time)
-                                                  ).select_related()
+                                                  ).select_related().order_by('group_name')
+
+
+    schedule_dict = {}
+    for key, group in (groupby(schedule_group, key=lambda x: x.group_name.name)):
+        schedule_dict[key] = list(group)
+
+    first_group = list(schedule_dict.keys())[0]
+    msg_gen_obj = message_generator(schedule_dict, first_group)
+    msg_gen_obj.send(None)
+    group_set = set()
+
     for schedule_data in schedule_group:
         all_sub = Subscriber.objects.filter(group_name=schedule_data.group_name,
                                             is_unsubscribed=False)
@@ -115,15 +126,22 @@ def send_sms_notification(self):
             print(f"there is not subscriber for this group name {schedule_data.group_name.name}")
             continue
         sub_user = all_sub.values(mobile=F("mobile_number"))
+
+        if schedule_data.group_name.name not in group_set:
+            group_set.add(schedule_data.group_name.name)
+            message = msg_gen_obj.send(schedule_data.group_name.name)
+        else:
+            continue
+
         paginator = Paginator(sub_user, 100)
         for page_no in paginator.page_range:
             current_page = paginator.get_page(page_no)
             current_qs = current_page.object_list
             tx_id = generate_uniqe_id()
-            from_date = schedule_data.starting_period.strftime('%b %-dth')
-            from_time = schedule_data.starting_period.strftime('%I:%S %p')
-            to_time = schedule_data.ending_period.strftime('%I:%S %p')
-            message = f"{from_date} from {from_time} to {to_time} [Group {schedule_data.group_name.name} power cut schedule].To unsubscribe go to {link}"
+            # from_date = schedule_data.starting_period.strftime('%b %-dth')
+            # from_time = schedule_data.starting_period.strftime('%I:%S %p')
+            # to_time = schedule_data.ending_period.strftime('%I:%S %p')
+            # message = f"{from_date} from {from_time} to {to_time} [Group {schedule_data.group_name.name} power cut schedule].To unsubscribe go to {link}"
             numbers = list(current_qs)
             resp = send_sms(numbers, message, tx_id)
             if resp.status_code == 200:
@@ -295,3 +313,22 @@ def chunks(lst, n):
     """Yield successive n-sized chunks from lst."""
     for i in range(0, len(lst), n):
         yield lst[i:i + n]
+
+
+def message_generator(group_schedule,group_name):
+    link = f"https://ekata.lk/unsubscribe"
+    while True:
+
+        obj_list = group_schedule[group_name]
+        msg_text = ''
+        for i in obj_list:
+            if i.starting_period != i.ending_period:
+                from_date = i.starting_period.strftime('%b %-dth')
+                from_time = i.starting_period.strftime('%I:%S %p')
+                to_time =i.ending_period.strftime('%I:%S %p')
+                msg_text += f"{from_date} from {from_time} to {to_time}, "
+        msg_text += f"[Group {group_name} power cut schedule].To unsubscribe go to {link}"
+        received = yield msg_text
+        # received = yield group_schedule[group_name]
+        group_name = received if received is not None else None
+
