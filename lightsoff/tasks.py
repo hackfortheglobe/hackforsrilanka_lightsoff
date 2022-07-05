@@ -126,7 +126,8 @@ def send_sms_notification(self):
             print(f"there is not subscriber for this group name {schedule_data.group_name.name}")
             continue
         sub_user = all_sub.values(mobile=F("mobile_number"))
-
+        schedule_data.is_run = True
+        schedule_data.save()
         if schedule_data.group_name.name not in group_set:
             group_set.add(schedule_data.group_name.name)
             message = msg_gen_obj.send(schedule_data.group_name.name)
@@ -176,8 +177,8 @@ def send_sms_notification(self):
                                             task="lightsoff.tasks.send_sms_to_batch",
                                             name=f'send_batch_sms_{batch_data.id}')
                 print(f"Task is created for this batch number {batch_data.id}.")
-            schedule_data.is_run = True
-            schedule_data.save()
+            # schedule_data.is_run = True
+            # schedule_data.save()
 
 @app.task(bind=True, max_retries=settings.CELERY_TASK_PUBLISH_RETRY)
 def send_sms_to_batch(self):
