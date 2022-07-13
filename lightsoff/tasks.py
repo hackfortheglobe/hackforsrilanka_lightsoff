@@ -20,6 +20,7 @@ from django_celery_beat.models import (PeriodicTask,
 from django.db.models import Prefetch
 from django.core.paginator import Paginator
 from django.db.models import F
+from django.utils.dateformat import format
 
 
 
@@ -109,15 +110,12 @@ def send_sms_notification(self):
                                                   starting_period__gte=datetime.datetime.now(tz=local_time)
                                                   ).select_related().order_by('group_name')
 
-
-    schedule_dict = {}
-    for key, group in (groupby(schedule_group, key=lambda x: x.group_name.name)):
-        schedule_dict[key] = list(group)
-
-    first_group = list(schedule_dict.keys())[0]
-    msg_gen_obj = message_generator(schedule_dict, first_group)
-    msg_gen_obj.send(None)
-    group_set = set()
+    if len(schedule_group) != 0:
+        schedule_dict = {key: list(gr) for key, gr in (groupby(schedule_group, key=lambda x: x.group_name.name))}
+        first_group = list(schedule_dict.keys())[0]
+        msg_gen_obj = message_generator(schedule_dict, first_group)
+        msg_gen_obj.send(None)
+        group_set = set()
 
     for schedule_data in schedule_group:
         all_sub = Subscriber.objects.filter(group_name=schedule_data.group_name,
@@ -324,7 +322,8 @@ def message_generator(group_schedule,group_name):
         msg_text = ''
         for i in obj_list:
             if i.starting_period != i.ending_period:
-                from_date = i.starting_period.strftime('%b %-dth')
+                from_date = format(i.starting_period,'M dS')
+                # from_date = i.starting_period.strftime('%b %-dth')
                 from_time = i.starting_period.strftime('%I:%S %p')
                 to_time =i.ending_period.strftime('%I:%S %p')
                 msg_text += f"{from_date} from {from_time} to {to_time}, "
