@@ -324,8 +324,8 @@ def message_generator(group_schedule,group_name):
             if i.starting_period != i.ending_period:
                 from_date = format(i.starting_period,'M dS')
                 # from_date = i.starting_period.strftime('%b %-dth')
-                from_time = i.starting_period.strftime('%I:%S %p')
-                to_time =i.ending_period.strftime('%I:%S %p')
+                from_time = i.starting_period.strftime('%I:%M %p')
+                to_time =i.ending_period.strftime('%I:%M %p')
                 msg_text += f"{from_date} from {from_time} to {to_time}, "
         msg_text += f"[Group {group_name} power cut schedule].To unsubscribe go to {link}"
         received = yield msg_text
