@@ -233,74 +233,92 @@ from os import getcwd, remove
 
 @app.task(bind=True, max_retries=0)
 def scrapper_data(self):
+    COMPOSITE_SEPARATOR = ";;"
+    stored_last_processed = LastProcessedDocument.objects.all().last()
+    stored_composite_id = stored_last_processed.last_processed_id
+    if (not stored_composite_id or stored_composite_id == "" or not COMPOSITE_SEPARATOR in stored_composite_id):
+        print("Running scraper for first time, LastProcessedDocument doesn't contain the separator")
+        result=scrape("", "")        
+    else:
+        last_pdf_id = stored_composite_id.split(COMPOSITE_SEPARATOR)[0]
+        last_proxy_id = stored_composite_id.split(COMPOSITE_SEPARATOR)[1]
+        result=scrape(last_pdf_id, last_proxy_id)
 
-    print("SCRAPER TEMPORARILY DISABLED")
-    return
+    if result == "" or not type(result) is dict:
+        print("Data already exists or wrong response from scraper")
+        return None
+    
 
     DOMAIN_NAME = f"http://{settings.DOCKER_APP_NAME}:8000"
     place_url = f"{DOMAIN_NAME}/api/create-place/"
     schedule_url = f"{DOMAIN_NAME}/api/create-schedule/"
     api_key = settings.LIGHT_OFF_API_KEY
-    print(f"Internal API url for places: {place_url}")
-    print(f"Internal API url for schedules: {schedule_url}")
-    print(f"My fully qualified domain name: {socket.getfqdn()}")    
+    headers = {}
+    headers = CaseInsensitiveDict()
+    headers["Content-Type"] = "application/json"
+    headers["Authorization"] = f"Api-Key {api_key}"
 
-    last_obj = LastProcessedDocument.objects.all().last()
-    if last_obj:
-        result=scrape(last_obj.last_processed_id)
-    else:
-        result=scrape("")
-    
-    if not result == "" and isinstance(result, list) and len(result)==3:
-        headers = {}
-        headers = CaseInsensitiveDict()
-        headers["Content-Type"] = "application/json"
-        headers["Authorization"] = f"Api-Key {api_key}"
-        
-        # Read places and push them via api (use batching to avoid timeouts)
-        place_data = result[0]
-        for single_place_data in place_data:
+
+    if 'places_id' in result.keys() and 'places_data' in result.keys():
+        # Save places data using API (use batching to avoid timeouts)
+        new_places = result['places_data']
+        for single_place_data in new_places:
             batch_dict={}
-            batch_dict[single_place_data] = place_data[single_place_data]
+            batch_dict[single_place_data] = new_places[single_place_data]
             batch_string = json.dumps(batch_dict)
             print(f"Calling api: {place_url}")
             response=requests.post(url=place_url, headers=headers, data=batch_string, verify=False)
             print(f"Response from api: {response}")
-        place_data = None
+        new_places = None
+        new_pdf_id = result['places_id']
 
-        # Read schedules and push them via api (use batching to avoid timeouts)
-        schedule_data = result[1]
-        schedule_batches = chunks(schedule_data['schedules'], 10)
+    if 'schedules_id' in result.keys() and 'schedules_data' in result.keys():
+        # Save schedules data using API (use batching to avoid timeouts)
+        new_schedules = result['schedules_data']
+        schedule_batches = chunks(new_schedules['schedules'], 10)
         for schedule_batch in schedule_batches:
             batch_dict={}
             batch_dict['schedules'] = schedule_batch
-            batch_string = json.dumps(schedule_data)
+            batch_string = json.dumps(new_schedules)
             print(f"Calling api: {schedule_url}")
             response=requests.post(url=schedule_url, headers=headers, data=batch_string, verify=False)
             print(f"Response from api: {response}")
+        new_schedules = None
+        new_schedules_id = result['schedules_id']
+
+        # Schedule a periodic task to notify the users about the new schedules
         time = datetime.datetime.now(tz=local_time) + timedelta(minutes=1)
         clock_time = ClockedSchedule.objects.create(clocked_time=time)
         PeriodicTask.objects.create(clocked=clock_time,
                                     one_off=True,
                                     task="lightsoff.tasks.send_sms_notification",
                                     name=f'send_bulk_sms{clock_time.id}')
-        schedule_data = None
+        
 
-        # Read last document id and push them via api
-        last_processed_id = result[2]
-        if last_obj:
-            print("Updating LastProcessedDocument")
-            last_obj.last_processed_id = last_processed_id
-            last_obj.save()
+    # Save new conposite id in LastProcessedDocument using the model
+    if not stored_last_processed:
+        if (new_pdf_id and new_pdf_id != "" and new_schedules_id and new_schedules_id != ""):
+            new_composite_id = new_pdf_id + COMPOSITE_SEPARATOR + new_schedules_id
+            print("Creating LastProcessedDocument: " + new_composite_id)
+            LastProcessedDocument.objects.create(last_processed_id=new_composite_id)
         else:
-            print("Creating LastProcessedDocument")
-            LastProcessedDocument.objects.create(last_processed_id=last_processed_id)
-        last_processed_id = None
-
-        print("Data successfully inserted")
+            print("any of the ids are missings, unable to create the LastProcessedDocument")
+            return
     else:
-        print("Data already exists or wrong response from scraper")
-        return None
+        if (new_pdf_id and new_pdf_id != ""):
+            new_composite_id = new_pdf_id + COMPOSITE_SEPARATOR
+        else:
+            new_composite_id = last_pdf_id + COMPOSITE_SEPARATOR
+        if (new_schedules_id and new_schedules_id != ""):
+            new_composite_id = new_composite_id + new_schedules_id
+        else:
+            new_composite_id = new_composite_id + last_proxy_id
+        print("Updating LastProcessedDocument: " + new_composite_id)
+        stored_last_processed.last_processed_id = new_composite_id
+        stored_last_processed.save()
+
+    print("Data successfully inserted")
+
     
 def chunks(lst, n):
     """Yield successive n-sized chunks from lst."""

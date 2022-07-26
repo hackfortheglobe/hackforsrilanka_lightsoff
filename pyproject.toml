@@ -39,9 +39,9 @@ django-jazzmin = "^2.5.0"
 django-extensions = "^3.1.5"
 tqdm = "^4.64.0"
 urllib3 = "^1.26.9"
-pdfminer = "^20191125"
 PyPDF2 = "^1.27.12"
 PyMuPDF = "^1.19.6"
+selenium-wire = "^4.6.5"
 [tool.poetry.dev-dependencies]
 black = {version = "^22.3.0", allow-prereleases = true}
 

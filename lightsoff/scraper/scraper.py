@@ -1,5 +1,3 @@
-
-
 '''
     scraper.py
 
@@ -19,24 +17,22 @@ import pandas as pd
 from datetime import datetime
 import json
 import re
-from pathlib import Path
 import string
 import numpy as np
 import os
-import sys
 from lxml import html
 import re
 import requests
-from io import StringIO
-from datetime import datetime as dt,timedelta
-from pdfminer.converter import TextConverter
-from pdfminer.layout import LAParams
-from pdfminer.pdfdocument import PDFDocument
-from pdfminer.pdfinterp import PDFResourceManager, PDFPageInterpreter
-from pdfminer.pdfpage import PDFPage
-from pdfminer.pdfparser import PDFParser
 import urllib3
 import fitz
+
+from collections import Counter
+import json
+import time
+import os
+from DriverManager import DriverManager
+from selenium.webdriver.common.by import By
+from selenium.common.exceptions import WebDriverException
 
 start_datetime = datetime.now()
 
@@ -47,29 +43,57 @@ outputsFolder = f"{scraperFolder}outputs/"
 lastProcessedFileName = 'last_processed_document_id.txt'
 placesFileName = 'places.json'
 schedulesFileName = 'schedules.json'
+COMPOSITE_SEPARATOR = ";;"
 
-def scrape(last_document_id):
+def scrape(last_pdf_id, last_proxy_id):
 
-    print("Scraper started with param %s." % (last_document_id))
+    print("Scraper started with params '%s' and '%s'" % (last_pdf_id, last_proxy_id))
     global start_datetime
     start_datetime = datetime.now()
+    results = {}
 
     try:
-        result = run_scraper(last_document_id)
+        pdf_result = run_pdf_scraper(last_pdf_id)
+        print("validate_places_data")
+        isValidPlaces = validate_places_result(pdf_result)
+        if isValidPlaces:
+            print("Adding places to results")
+            results['places_id'] = pdf_result['id']
+            results['places_data'] = pdf_result['data']
+        else:
+            print("Places is not valid, skipping")
     except Exception as e:
+        print("Exception while running places scraper")
         print(e)
-        logFinish("Error running the scrapper")
-        return ""
 
-    if result == "":
+    try:
+        proxy_result = run_proxy_scraper(last_proxy_id)
+        print("validate_schedules_data")
+        isValidSchedules = validate_schedules_result(proxy_result)
+        if isValidSchedules:
+            print("Adding schedules to results")
+            results['schedules_id'] = proxy_result['id']
+            results['schedules_data'] = proxy_result['data']
+    except WebDriverException as e:
+        if ("ERR_TUNNEL_CONNECTION_FAILED" in e.msg):
+            print("WebDriverException while running schedules scrapper: the proxy is down!")
+        else:
+            print("WebDriverException while running schedules scrapper: there is a problem with the proxy")
+            print(e)
+    except Exception as e: 
+        print(e)
+        print("Exception while running schedules scraper")
+
+    if results == "" or len(results) == 0:
         logFinish("Nothing extracted")
     else:
         logFinish("NEW DATA EXTRACTED")
-    
-    return result
+    return results
 
 
-def run_scraper(last_document_id):
+
+def run_pdf_scraper(last_document_id):
+    print("run_pdf_scraper(%s)" % (last_document_id))
     # Get the Google Docs url
     targetUrl = get_target_url()
     if targetUrl == "":
@@ -94,30 +118,13 @@ def run_scraper(last_document_id):
     download_file_from_google_drive(new_document_id, localDocPath)
 
     # Extract data
-    print("Extracting data...")
-    extracted_data = extract_data(localDocPath)
-    json_places = extracted_data[0]
-    json_schedules = extracted_data[1]
+    print("Extracting places data from pdf...")
+    extraction = {}
+    json_places = extract_data_from_pdf(localDocPath)
+    extraction['id'] = new_document_id
+    extraction['data'] = json_places
 
-    # Validate data
-    isValid = validate_extracted_data(json_places, json_schedules)
-
-    if not isValid:
-        print("Extrtacted data is not valid")
-        return ""
-
-    # Return all results as array instead of using output folder
-    extracted_data.append(new_document_id)
-    return extracted_data
-
-    # Save all outputs into the output folder
-    #save_all_outputs(json_places, json_schedules, new_document_id)
-
-    # Export outputs in CSV
-    #export_outputs_to_CSV(json_places, json_schedules)
-
-    #return new_document_id
-
+    return extraction
 
 def get_target_url():
 
@@ -170,8 +177,7 @@ def save_response_content(response, destination):
             if chunk: # filter out keep-alive new chunks
                 f.write(chunk)
 
-
-def extract_data(pdf_local_path):
+def extract_data_from_pdf(pdf_local_path):
     # Reading the pdf file
     print("Reading the PDF with camelot")
     tables = camelot.read_pdf(pdf_local_path,pages='all')
@@ -209,86 +215,10 @@ def extract_data(pdf_local_path):
                 if letter in x:
                     groups.append(letter)
     groups = sorted(list(set(groups)))
-
-    print("Extracting schedules...")
-    schedules = extract_schedule_data(data_dic,all_groups,groups,pdf_local_path)
     
-    print("Extracting places...")
+    print("Extracting places from PDF...")
     places = extract_places_data(pdf_local_path, tables)
-
-    return [places,schedules]
-
-
-def extract_schedule_data(data_dic,all_groups,groups,pdf_local_path):
-    # converting schedues data from pdf to dictionary form
-    schedules = {'schedules':[]}
-    date_range = get_dates(pdf_local_path)
-    print(f"Document schedule tables: {len(all_groups)}")
-    for table_no in range(0,len(all_groups)):
-        #passing rows of current table
-        current_table = data_dic['data{}'.format(table_no)]
-        print(f"Document schedule table #{table_no + 1} has {len(current_table)} data rows.")
-        for index,row in current_table.iterrows():
-            joined_row = ' '.join(row.values)
-            timings = re.finditer(r'\s\d?\d[:.]\d{2}\s(a.m|p.m)?',joined_row)
-            #print('Timings after match : ',timings)
-            timings = [i.group(0) for i in timings]
-            #print('Timings after list : ',timings)
-            timings = timeformat_convert24_hr(timings)
-            #print('Timings After func : ',timings)
-            if timings:
-                if ',' in row[all_groups[1][1]]:
-                    groups = row[all_groups[1][1]].split(',')
-                else:
-                    if 'CC' in row[all_groups[1][1]]:
-                        continue
-                    else:
-                        groups = [group for group in row[all_groups[1][1]]]
-                for group in groups:
-                    for date in date_range:
-                        starting_period = f'{date.strftime("%Y-%m-%d")} {timings[0].strip()}'.replace('.',':')
-                        ending_period = f'{date.strftime("%Y-%m-%d")} {timings[-1].strip()}'.replace('.',':')
-                        schedules['schedules'].append({'group':group.strip(),
-                        'starting_period':starting_period,
-                        'ending_period':ending_period})
-    return schedules
-
-def clean_schedules_timings(timings):
-    timings1 = []
-    for time in timings:
-        #print('Time :',time)
-        time = time.strip()
-        pattern = r'[:. ]'
-        if 'a.m' in time or 'p.m' in time:
-            time = re.split(pattern,time)
-            #print('Time after regex : ',time)
-
-            #print(f'time 0 {time[0]} time 1 {time[1]} time 2 {time[2]} time 3 {time[3]}')
-            # it is 12 hour format
-            if time[2] == "a" and int(time[0]) == "12":
-                timings1.append(f'00:{time[1]}')
-            # remove the AM
-            elif time[2] == "a":
-                timings1.append(time[0]+':'+time[1])
-                # Checking if last two elements of time
-                # is PM and first two elements are 12
-            elif time[2] == "p" and time[2] == "12":
-                timings1.append(f'12:{time[1]}')
-            else:
-                # add 12 to hours and remove PM
-                timings1.append(str(int(time[0]) + 12)+':'+time[1])
-    return timings1
-
-def timeformat_convert24_hr(timings):
-    if 'a.m' in timings[0] or 'p.m' in timings[0]:
-        # it is 12 hour format
-        timings = clean_schedules_timings(timings)
-        return timings
-    else:
-        # it is 24 hours format
-        timings = [timing.strip() for timing in timings]
-        return timings
-
+    return places
 
 def extract_places_data(pdf_local_path, tables):
     
@@ -478,57 +408,105 @@ def extract_places_data(pdf_local_path, tables):
 
     return final_dict
 
-# Get the dates affecting the schedule
-def get_dates(localDocPath):
-    months = ['January','February','March','April','May','June','July','August','September','October','November','December']
-    dates_line = extract_dates_line(localDocPath)
-    dates = re.findall(r'\b\d{2}\D',dates_line)
-    months = re.findall('|'.join(months),dates_line)
-    dates = list(map(lambda x: re.findall(r'\d{2}',x)[0],dates))
 
-    if len(dates) == 1:
-        range = [dt.strptime(f'{months[0][0:3]} {dates[0]} 2022','%b %d %Y')]
-    else:
-        if len(months)==1:
-            start_date = dt.strptime(f'{months[0][0:3]} {dates[0]} 2022','%b %d %Y')
-            end_date = dt.strptime(f'{months[0][0:3]} {dates[1]} 2022','%b %d %Y')
-        else:
-            start_date = dt.strptime(f'{months[0][0:3]} {dates[0]} 2022','%b %d %Y')
-            end_date = dt.strptime(f'{months[1][0:3]} {dates[1]} 2022','%b %d %Y')
-        range = get_dates_between(start_date,end_date)
 
-    print(f"Document dates: {range}")
-    return range
+def run_proxy_scraper(last_row_id):
+    print("run_proxy_scraper(%s)" % (last_row_id))
+    print("Extracting schedules data from proxy...")
 
-# Read the days affecting the schedule by reading the first line at the pdf
-def extract_dates_line(localDocPath):
-    output_string = StringIO()
-    print("Reading pdf text with PdfMiner...")
-    with open(localDocPath, 'rb') as in_file:
-        parser = PDFParser(in_file)
-        doc = PDFDocument(parser)
-        rsrcmgr = PDFResourceManager()
-        device = TextConverter(rsrcmgr, output_string, laparams=LAParams())
-        interpreter = PDFPageInterpreter(rsrcmgr, device)
-        for page in PDFPage.create_pages(doc):
-            interpreter.process_page(page)
-    pdf_data= output_string.getvalue()
-    dates_line = re.findall(r'Demand Management Schedule.+\b\d{2}\D+\b',pdf_data)[0]
-    print (f"Document title: {dates_line}")
-    return dates_line
+    site_url = "https://cebcare.ceb.lk/Incognito/DemandMgmtSchedule"
+    data_url = "https://cebcare.ceb.lk/Incognito/GetLoadSheddingEvents"
 
-# Gives all days between two dates in datetime format
-def get_dates_between(start, end):
-    delta = end - start  # as timedelta
-    days = [start + timedelta(days=i) for i in range(delta.days + 1)]
-    return days
+    driverManager = DriverManager()
+    driver = driverManager.get_driver()
+    driver.get(site_url)
+    #driverManager.print_request()
 
-def reset_index(main_dict):
-    for group,table in main_dict.items():
-        table.reset_index(drop=True,inplace=True)
-    return main_dict
+    time.sleep(4)
+    driver.find_element(by=By.CSS_SELECTOR,
+                        value="button.fc-dayGridMonth-button").click()
+    time.sleep(4)
 
-def validate_extracted_data(json_places, json_schedules):
+    browser_log = driver.get_log('performance')
+    events = [process_browser_log_entry(entry) for entry in browser_log]
+    events = [event for event in events if 'Network.response' in event['method']]
+
+    item_index = None
+    for (index, event) in enumerate(events):
+        try:
+            if(event["params"]["response"]["url"] == data_url):
+                item_index = index
+        except:
+            pass
+
+    # TODO: Check non 200 responses and retry or skip.
+    # On busy time we receive a 429: Too many requests received. 
+    if (item_index == None):
+        print("Data Not Found")
+        driver.close()
+        return ""
+
+    data = driver.execute_cdp_cmd('Network.getResponseBody', {'requestId': events[item_index]["params"]["requestId"]})
+    data = json.loads(data["body"])
+    print(f"Received schedules: {len(data)}")
+
+    # Filter already inserted rows
+    data_filter = filter(lambda item: item['id']>last_row_id, data)
+    filtered_data = sorted(data_filter, key = lambda item: (item['id']))
+    print(f"Filtered schedules: {len(filtered_data)}")
+
+    if (len(filtered_data) == 0):
+        return ""
+
+    # Calculate new last id
+    new_last_row_id = filtered_data[-1]['id']
+    print(f"new_last_row_id: {new_last_row_id}")
+
+    # Count schedules by group (not needed, just for logs and visual verification)
+    counted = Counter((item['loadShedGroupId']) for item in filtered_data)
+    output = [({'Group' : doctor}, k) for (doctor), k in counted.items()]
+    print(output)
+
+    # Sort schedules by date and group
+    filtered_data = sorted(filtered_data, key = lambda item: (item['startTime'], item['loadShedGroupId']))
+
+    final_data = list(map(remap_data, filtered_data))
+
+    extraction = {}
+    extraction['id'] = new_last_row_id
+    extraction['data'] = {'schedules':final_data}
+
+    #with open(os.path.join('output', 'schedule', 'new_schedules.json'), 'w') as outfile:
+    #    json.dump(final_data, outfile)
+    #print("Data saved in new_schedules.json")
+    
+    driver.close()
+    return extraction
+
+def process_browser_log_entry(entry):
+    response = json.loads(entry['message'])['message']
+    return response
+
+def remap_data(item):
+    obj = {
+        #"id": item['id'],
+        "group": item['loadShedGroupId'],
+        "starting_period": format_date_time(item['startTime']),
+        "ending_period": format_date_time(item['endTime']),
+    }
+    return obj
+
+def format_date_time(date_time):
+    # Replace middle T by a space and remove last 3 character for seconds. 
+    # Sample: from "2022-05-20T05:00:00" to "2022-05-20 05:00"
+    return date_time.replace("T", " ")[:-3]
+
+
+def validate_places_result(result):
+    if (result == "" or not type(result) is dict or not 'data' in result.keys()):
+        return False
+
+    json_places = result['data']
     # Print extracted places
     gss_count = len(json_places)
     area_count = 0
@@ -537,6 +515,17 @@ def validate_extracted_data(json_places, json_schedules):
         area_count = area_count + current_gss_areas
     print("Extracted places: %s areas in %s gss" % (area_count, gss_count))
 
+    # TODO: validate more things
+    if gss_count==0 or area_count==0:
+        return False
+    
+    return True
+
+def validate_schedules_result(result):
+    if (result == "" or not type(result) is dict or not 'data' in result.keys()):
+        return False
+
+    json_schedules = result['data']
     # Print extracted schedules
     schedules_count = len(json_schedules["schedules"])
     print("Extracted schedules: %s power cuts" % (schedules_count))
