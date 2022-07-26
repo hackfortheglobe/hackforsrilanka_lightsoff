@@ -58,6 +58,7 @@ services:
       - POSTGRES_DB=${DB_NAME}
       - POSTGRES_USER=${DB_USER}
       - POSTGRES_PASSWORD=${DB_PASSWORD}
+      - SCRAPER_PROXY=${SCRAPER_PROXY}
     depends_on:
       - db
       - web
