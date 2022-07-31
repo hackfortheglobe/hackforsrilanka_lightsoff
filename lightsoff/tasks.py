@@ -1,4 +1,5 @@
 import datetime
+import os
 import socket
 from conf.celery import app
 from django.core.mail import send_mail
@@ -249,6 +250,17 @@ def scrapper_data(self):
     if result == "" or not type(result) is dict:
         print("Data already exists or wrong response from scraper")
         return None
+
+
+    # Dry Run
+    scraperFolder = f"{os.path.dirname(os.path.abspath(__file__))}/"
+    outputsFolder = f"{scraperFolder}outputs/"
+    outputFile = os.path.join('outputs', 'dryRun.json')
+    with open(outputFile, 'w') as outfile:
+        json.dump(result, outfile, indent=4)
+    print("Dry run: data saved at: " + outputFile)
+    return
+
     
     # Prepare urls and header for API requests
     DOMAIN_NAME = f"http://{settings.DOCKER_APP_NAME}:8000"
