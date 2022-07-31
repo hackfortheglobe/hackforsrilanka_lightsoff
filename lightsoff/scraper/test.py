@@ -25,20 +25,20 @@ if __name__ == "__main__":
     print()
     print("Starting test 'Nothing', passing lastCompositeId, nothing should be scraped...")
     result = scrape(last_pdf_id, last_proxy_id)
-    with open(os.path.join('outputs', 'new_scraper_nothing.json'), 'w') as outfile:
+    with open(os.path.join(outputsFolder, 'new_scraper_nothing.json'), 'w') as outfile:
         json.dump(result, outfile, indent=4)
 
     print()
     print("Starting test 'One', passing lastProxyId - 1, only one schedule should be scraped...")
     last_proxy_id_minus_one= str(int(last_proxy_id) - 1)
     result = scrape(last_pdf_id, last_proxy_id_minus_one)
-    with open(os.path.join('outputs', 'new_scraper_one.json'), 'w') as outfile:
+    with open(os.path.join(outputsFolder, 'new_scraper_one.json'), 'w') as outfile:
         json.dump(result, outfile, indent=4)
 
     print()
     print("Starting test 'All', passing empty doc id, a lot will be scraped...")
     result = scrape("", "")
-    with open(os.path.join('outputs', 'new_scraper_all.json'), 'w') as outfile:
+    with open(os.path.join(outputsFolder, 'new_scraper_all.json'), 'w') as outfile:
         json.dump(result, outfile, indent=4)
 
     print("Data saved in new_scraper.json")
