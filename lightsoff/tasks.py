@@ -255,7 +255,7 @@ def scrapper_data(self):
     # Dry Run
     scraperFolder = f"{os.path.dirname(os.path.abspath(__file__))}/"
     outputsFolder = f"{scraperFolder}outputs/"
-    outputFile = os.path.join('outputs', 'dryRun.json')
+    outputFile = os.path.join(outputsFolder, 'dryRun.json')
     with open(outputFile, 'w') as outfile:
         json.dump(result, outfile, indent=4)
     print("Dry run: data saved at: " + outputFile)
