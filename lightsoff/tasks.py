@@ -286,6 +286,7 @@ def scrapper_data(self):
             print(f"Response from api: {response}")
         new_places = None
         new_pdf_id = result['places_id']
+        print("Data inserted for places")
 
     if 'schedules_id' in result.keys() and 'schedules_data' in result.keys():
         # Save schedules data using API (use batching to avoid timeouts)
@@ -308,18 +309,22 @@ def scrapper_data(self):
                                     one_off=True,
                                     task="lightsoff.tasks.send_sms_notification",
                                     name=f'send_bulk_sms{clock_time.id}')
+        print("Data inserted for schedules")
 
     # Save new composite id in LastProcessedDocument using the model (insert or update)
-    if not stored_last_processed:
-        if (new_pdf_id and new_pdf_id != "" and new_schedules_id and new_schedules_id != ""):
+    if (new_pdf_id == "" and new_schedules_id == ""):
+        print("Saving LastProcessedDocument: Skipped, no new ids")
+        return
+    elif not stored_last_processed:
+        if (new_pdf_id != "" and new_schedules_id != ""):
             new_composite_id = new_pdf_id + COMPOSITE_SEPARATOR + new_schedules_id
-            print("Creating LastProcessedDocument: " + new_composite_id)
+            print("Saving LastProcessedDocument: Created, " + new_composite_id)
             LastProcessedDocument.objects.create(last_processed_id=new_composite_id)
         else:
-            print("Any of the ids are missings, unable to create the LastProcessedDocument")
+            print("Saving LastProcessedDocument: Skipped, first run and one id is missings")
             return
     else:
-        if (new_pdf_id and new_pdf_id != ""):
+        if (new_pdf_id != ""):
             new_composite_id = new_pdf_id + COMPOSITE_SEPARATOR
         else:
             new_composite_id = last_pdf_id + COMPOSITE_SEPARATOR
@@ -327,11 +332,11 @@ def scrapper_data(self):
             new_composite_id = new_composite_id + new_schedules_id
         else:
             new_composite_id = new_composite_id + last_proxy_id
-        print("Updating LastProcessedDocument: " + new_composite_id)
+        print("Saving LastProcessedDocument: Update, " + new_composite_id)
         stored_last_processed.last_processed_id = new_composite_id
         stored_last_processed.save()
 
-    print("Data successfully inserted")
+    print("Scraper task finished")
 
     
 def chunks(lst, n):

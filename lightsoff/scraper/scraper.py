@@ -420,7 +420,7 @@ def run_proxy_scraper(last_row_id):
     driverManager = DriverManager()
     driver = driverManager.get_driver()
     driver.get(site_url)
-    driverManager.print_request()
+    #driverManager.print_request()
 
     time.sleep(4)
     driver.find_element(by=By.CSS_SELECTOR,
