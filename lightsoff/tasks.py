@@ -271,6 +271,8 @@ def scrapper_data(self):
     headers["Content-Type"] = "application/json"
     headers["Authorization"] = f"Api-Key {api_key}"
 
+    new_pdf_id = ""
+    new_schedules_id = ""
 
     if 'places_id' in result.keys() and 'places_data' in result.keys():
         # Save places data using API (use batching to avoid timeouts)
