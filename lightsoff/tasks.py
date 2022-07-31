@@ -233,6 +233,7 @@ from os import getcwd, remove
 
 @app.task(bind=True, max_retries=0)
 def scrapper_data(self):
+    # Scrape data newer than LastProcessedDocument
     COMPOSITE_SEPARATOR = ";;"
     stored_last_processed = LastProcessedDocument.objects.all().last()
     stored_composite_id = stored_last_processed.last_processed_id
@@ -244,11 +245,12 @@ def scrapper_data(self):
         last_proxy_id = stored_composite_id.split(COMPOSITE_SEPARATOR)[1]
         result=scrape(last_pdf_id, last_proxy_id)
 
+    # Check if new data has been scraped
     if result == "" or not type(result) is dict:
         print("Data already exists or wrong response from scraper")
         return None
     
-
+    # Prepare urls and header for API requests
     DOMAIN_NAME = f"http://{settings.DOCKER_APP_NAME}:8000"
     place_url = f"{DOMAIN_NAME}/api/create-place/"
     schedule_url = f"{DOMAIN_NAME}/api/create-schedule/"
@@ -293,16 +295,15 @@ def scrapper_data(self):
                                     one_off=True,
                                     task="lightsoff.tasks.send_sms_notification",
                                     name=f'send_bulk_sms{clock_time.id}')
-        
 
-    # Save new conposite id in LastProcessedDocument using the model
+    # Save new composite id in LastProcessedDocument using the model (insert or update)
     if not stored_last_processed:
         if (new_pdf_id and new_pdf_id != "" and new_schedules_id and new_schedules_id != ""):
             new_composite_id = new_pdf_id + COMPOSITE_SEPARATOR + new_schedules_id
             print("Creating LastProcessedDocument: " + new_composite_id)
             LastProcessedDocument.objects.create(last_processed_id=new_composite_id)
         else:
-            print("any of the ids are missings, unable to create the LastProcessedDocument")
+            print("Any of the ids are missings, unable to create the LastProcessedDocument")
             return
     else:
         if (new_pdf_id and new_pdf_id != ""):

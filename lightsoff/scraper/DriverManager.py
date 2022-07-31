@@ -45,3 +45,4 @@ class DriverManager:
                 request.response.status_code,
                 request.response.headers['Content-Type']
             )
+            

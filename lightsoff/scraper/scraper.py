@@ -420,7 +420,7 @@ def run_proxy_scraper(last_row_id):
     driverManager = DriverManager()
     driver = driverManager.get_driver()
     driver.get(site_url)
-    #driverManager.print_request()
+    driverManager.print_request()
 
     time.sleep(4)
     driver.find_element(by=By.CSS_SELECTOR,
@@ -438,12 +438,19 @@ def run_proxy_scraper(last_row_id):
                 item_index = index
         except:
             pass
-
-    # TODO: Check non 200 responses and retry or skip.
-    # On busy time we receive a 429: Too many requests received. 
+    
     if (item_index == None):
         print("Data Not Found")
         driver.close()
+        return ""
+
+    # Check staus code, on busy time we receive a 429 (Too many requests received)
+    data_response_status_code = events[item_index]["params"]["response"]["status"]    
+    data_response_status_text = events[item_index]["params"]["response"]["statusText"]    
+    if (events[item_index]["params"]["response"]["status"] != 200):
+        print("Wrong status code received when requesting data: %s %s" % (data_response_status_code, data_response_status_text))
+        driver.close()
+        # TODO: Wait and retry
         return ""
 
     data = driver.execute_cdp_cmd('Network.getResponseBody', {'requestId': events[item_index]["params"]["requestId"]})
