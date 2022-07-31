@@ -252,16 +252,15 @@ def scrapper_data(self):
         return None
 
 
-    # Dry Run
-    scraperFolder = f"{os.path.dirname(os.path.abspath(__file__))}/"
-    outputsFolder = f"{scraperFolder}scraper/outputs/"
-    outputFile = os.path.join(outputsFolder, 'dryRun.json')
-    with open(outputFile, 'w') as outfile:
-        json.dump(result, outfile, indent=4)
-    print("Dry run: data saved at: " + outputFile)
-    return
+    # Dry run
+    #scraperFolder = f"{os.path.dirname(os.path.abspath(__file__))}/"
+    #outputsFolder = f"{scraperFolder}scraper/outputs/"
+    #outputFile = os.path.join(outputsFolder, 'dryRun.json')
+    #with open(outputFile, 'w') as outfile:
+    #    json.dump(result, outfile, indent=4)
+    #print("Dry run: data saved at: " + outputFile)
+    #return
 
-    
     # Prepare urls and header for API requests
     DOMAIN_NAME = f"http://{settings.DOCKER_APP_NAME}:8000"
     place_url = f"{DOMAIN_NAME}/api/create-place/"
