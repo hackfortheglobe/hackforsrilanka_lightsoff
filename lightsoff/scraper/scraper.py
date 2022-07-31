@@ -30,7 +30,7 @@ from collections import Counter
 import json
 import time
 import os
-from DriverManager import DriverManager
+from lightsoff.scraper.DriverManager import DriverManager
 from selenium.webdriver.common.by import By
 from selenium.common.exceptions import WebDriverException
 
