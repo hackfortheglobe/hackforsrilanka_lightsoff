@@ -20,7 +20,7 @@ if __name__ == "__main__":
     last_pdf_id = stored_composite_id.split(COMPOSITE_SEPARATOR)[0]
     last_proxy_id = stored_composite_id.split(COMPOSITE_SEPARATOR)[1]
     scraperFolder = f"{os.path.dirname(os.path.abspath(__file__))}/"
-    outputsFolder = f"{scraperFolder}outputs/"
+    outputsFolder = f"{scraperFolder}scraper/outputs/"
 
     print()
     print("Starting test 'Nothing', passing lastCompositeId, nothing should be scraped...")
