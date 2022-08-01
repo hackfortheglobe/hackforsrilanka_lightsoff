@@ -103,15 +103,13 @@ from django.utils.dateformat import format
 
 @app.task(bind=True, max_retries=0)
 def send_sms_notification(self):
-    link = f"https://ekata.lk/unsubscribe"
-    url = "https://e-sms.dialog.lk/api/v1/sms"
     headers = CaseInsensitiveDict()
     access_token = login_sms_api()
     headers["Authorization"] = f"Bearer {access_token}"
     headers["Content-Type"] = "application/json"
     schedule_group = ScheduleGroup.objects.filter(is_run=False,
-                                                starting_period__gte=datetime.datetime.now(tz=local_time)
-                                                ).select_related().order_by('group_name')
+                                                  starting_period__gte=datetime.datetime.now(tz=local_time)
+                                                  ).select_related().order_by('group_name')
 
     if len(schedule_group) != 0:
         schedule_dict = {key: list(gr) for key, gr in (groupby(schedule_group, key=lambda x: x.group_name.name))}
@@ -140,10 +138,6 @@ def send_sms_notification(self):
             current_page = paginator.get_page(page_no)
             current_qs = current_page.object_list
             tx_id = generate_uniqe_id()
-            #from_date = localtime(schedule_data.starting_period).strftime('%b %-dth')
-            #from_time = localtime(schedule_data.starting_period).strftime('%I:%M %p')
-            #to_time = localtime(schedule_data.ending_period).strftime('%I:%M %p')
-            #message = f"{from_date} from {from_time} to {to_time} [Group {schedule_data.group_name.name} power cut schedule].To unsubscribe go to {link}"
             numbers = list(current_qs)
             resp = send_sms(numbers, message, tx_id)
             if resp.status_code == 200:
@@ -160,7 +154,7 @@ def send_sms_notification(self):
                                                   schedule=schedule_data)
                 batch_data.subscriber.set(list(current_qs.values_list("id", flat=True)))
                 batch_data.save()
-                print("Batch has been run successfully.")
+                print("Batch has been run successfully. Batch Id: {batch_data.id}.")
             else:
                 res_data = resp.json()
                 tx_data = Transaction.objects.create(status="FAILED",
@@ -177,14 +171,11 @@ def send_sms_notification(self):
                                             one_off=True,
                                             task="lightsoff.tasks.send_sms_to_batch",
                                             name=f'send_batch_sms_{batch_data.id}')
-                print(f"Task is created for this batch number {batch_data.id}.")
-            #schedule_data.is_run = True
-            #schedule_data.save()
+                print(f"Error response from dialog api: {resp.status_code} - {resp.text}")
+                print(f"PeriodicTask created to run this batch later on. Batch Id: {batch_data.id}.")
 
 @app.task(bind=True, max_retries=settings.CELERY_TASK_PUBLISH_RETRY)
 def send_sms_to_batch(self):
-    link = f"https://ekata.lk/unsubscribe"
-    url = "https://e-sms.dialog.lk/api/v1/sms"
     headers = CaseInsensitiveDict()
     access_token = login_sms_api()
     headers["Authorization"] = f"Bearer {access_token}"
@@ -201,13 +192,10 @@ def send_sms_to_batch(self):
         ## it will call the api until transaction id is unique.
         if batch_data.is_batch_run:
             continue
-        from_date = localtime(batch_data.schedule.starting_period).strftime('%b %-dth')
-        from_time = localtime(batch_data.schedule.starting_period).strftime('%I:%M %p')
-        to_time = localtime(batch_data.schedule.ending_period).strftime('%I:%M %p')
         count_number = 1
         while True:
             tx_id = generate_uniqe_id()
-            message = f"{from_date} from {from_time} to {to_time} [Group {batch_data.schedule.group_name} power cut schedule].To unsubscribe go to {link}"
+            message = batch_data.message
             numbers = list(batch_data.subscriber.all().values(mobile=F("mobile_number")))
             resp = send_sms(numbers, message, tx_id)
             res_data = resp.json()
@@ -366,17 +354,14 @@ def chunks(lst, n):
 def message_generator(group_schedule,group_name):
     link = f"https://ekata.lk/unsubscribe"
     while True:
-
         obj_list = group_schedule[group_name]
         msg_text = ''
         for i in obj_list:
             if i.starting_period != i.ending_period:
                 from_date = format(i.starting_period,'M dS')
-                # from_date = i.starting_period.strftime('%b %-dth')
                 from_time = i.starting_period.strftime('%I:%M %p')
                 to_time =i.ending_period.strftime('%I:%M %p')
                 msg_text += f"{from_date} from {from_time} to {to_time}, "
         msg_text += f"[Group {group_name} power cut schedule].To unsubscribe go to {link}"
         received = yield msg_text
-        # received = yield group_schedule[group_name]
         group_name = received if received is not None else None
