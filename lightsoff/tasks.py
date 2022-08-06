@@ -24,6 +24,7 @@ from django.db.models import Prefetch
 from django.core.paginator import Paginator
 from django.db.models import F
 from django.utils.dateformat import format
+import pytz
 
 
 
@@ -359,8 +360,10 @@ def message_generator(group_schedule,group_name):
         for i in obj_list:
             if i.starting_period != i.ending_period:
                 from_date = format(i.starting_period,'M dS')
-                from_time = i.starting_period.strftime('%I:%M %p')
-                to_time =i.ending_period.strftime('%I:%M %p')
+                print("Used fromDate: " + from_date)
+                print("Alternative fromDate: " + i.starting_period.astimezone(tz=local_time))
+                from_time = i.starting_period.astimezone(tz=local_time).strftime('%I:%M %p')
+                to_time = i.ending_period.astimezone(tz=local_time).strftime('%I:%M %p')
                 msg_text += f"{from_date} from {from_time} to {to_time}, "
         msg_text = msg_text[:-2]
         msg_text += f" [Group {group_name} power cut schedule]. To unsubscribe go to {link}"
