@@ -1,6 +1,5 @@
 import datetime
 import os
-import socket
 from itertools import groupby
 from conf.celery import app
 from django.core.mail import send_mail
@@ -13,6 +12,7 @@ from django.utils.timezone import localtime
 
 # from lightsoff.models import GROUP_CHOICES, Subscriber
 from lightsoff.utils import *
+from lightsoff.scraper.scraper import scrape
 
 import requests
 import json
@@ -104,13 +104,27 @@ import pytz
 
 @app.task(bind=True, max_retries=0)
 def send_sms_notification(self):
-    headers = CaseInsensitiveDict()
-    access_token = login_sms_api()
-    headers["Authorization"] = f"Bearer {access_token}"
-    headers["Content-Type"] = "application/json"
-    schedule_group = ScheduleGroup.objects.filter(is_run=False,
-                                                  starting_period__gte=datetime.datetime.now(tz=local_time)
-                                                  ).select_related().order_by('group_name')
+    print("Task send_sms_notification started")
+    do_send_sms_notification(isTest=False)
+    print(f"Task send_sms_notification finished")
+
+@app.task(bind=True, max_retries=0)
+def test_send_sms_notification(self):
+    print("Task test_send_sms_notification started")
+    do_send_sms_notification(isTest=True)
+    print(f"Task test_send_sms_notification finished")
+
+def do_send_sms_notification(isTest):
+    if (isTest):
+        TEST_DRY_RUN = True
+        TEST_GROUPS = ['A', 'M']
+        TEST_PHONE_NUMBERS = ['123456789']
+        TEST_FROM_DATE = datetime.datetime(2022,8,3,0,0,0,tzinfo=pytz.UTC)
+        print(f"Test SMS started. DRY_RUN:{TEST_DRY_RUN}, GROUPS:{TEST_GROUPS}, FROM_DATE:{TEST_FROM_DATE}, PHONE_NUMBERS:{TEST_PHONE_NUMBERS}")
+        schedule_group = ScheduleGroup.objects.filter(starting_period__gte=TEST_FROM_DATE).select_related().order_by('group_name')
+    else:
+        from_date_filter = datetime.datetime.now(tz=local_time)
+        schedule_group = ScheduleGroup.objects.filter(is_run=False, starting_period__gte=from_date_filter).select_related().order_by('group_name')
 
     if len(schedule_group) != 0:
         schedule_dict = {key: list(gr) for key, gr in (groupby(schedule_group, key=lambda x: x.group_name.name))}
@@ -120,26 +134,56 @@ def send_sms_notification(self):
         group_set = set()
 
     for schedule_data in schedule_group:
+        
+        if (isTest):
+            if (schedule_data.group_name.name not in TEST_GROUPS):
+                continue
+            else:
+                print(f"Test SMS schedule {schedule_data.id}, group {schedule_data.group_name.name}, from {schedule_data.starting_period}, to {schedule_data.ending_period}")
+
         all_sub = Subscriber.objects.filter(group_name=schedule_data.group_name,
                                             is_unsubscribed=False)
         if len(all_sub) == 0:
-            print(f"there is not subscriber for this group name {schedule_data.group_name.name}")
+            print(f"There is not subscriber for this group name {schedule_data.group_name.name}")
             continue
         sub_user = all_sub.values(mobile=F("mobile_number"))
-        schedule_data.is_run = True
-        schedule_data.save()
+        
         if schedule_data.group_name.name not in group_set:
             group_set.add(schedule_data.group_name.name)
             message = msg_gen_obj.send(schedule_data.group_name.name)
         else:
             continue
 
+        if (isTest):
+            message = f"TEST: {message}"
+            print(f"Test SMS message: {message}")
+            if (TEST_DRY_RUN):
+                print(f"Test SMS sender: Message not sent (dry run enabled)")
+                continue
+            tx_id = generate_uniqe_id()
+            resp = send_sms(TEST_PHONE_NUMBERS, message, tx_id)
+            if resp.status_code == 200:
+                print("Test SMS sender: Message sent successfully.")
+            else:
+                print(f"Test SMS sender: Message not sent: {resp.status_code} - {resp.text}")
+            continue
+        
+        # TODO: Remove after first test of the isTest, just for first run safety
+        if (isTest):
+            print("Test SMS WARNING! The test almost save things on DB, cancelled")
+            return
+
+        # Update schedule as already run in the DB (never for testing)
+        schedule_data.is_run = True
+        schedule_data.save()
+
+        # Send sms using batching and store transaction and batch information in the DB
         paginator = Paginator(sub_user, 100)
         for page_no in paginator.page_range:
             current_page = paginator.get_page(page_no)
             current_qs = current_page.object_list
-            tx_id = generate_uniqe_id()
             numbers = list(current_qs)
+            tx_id = generate_uniqe_id()
             resp = send_sms(numbers, message, tx_id)
             if resp.status_code == 200:
                 res_data = resp.json()
@@ -175,16 +219,32 @@ def send_sms_notification(self):
                 print(f"Error response from dialog api: {resp.status_code} - {resp.text}")
                 print(f"PeriodicTask created to run this batch later on. Batch Id: {batch_data.id}.")
 
+def message_generator(group_schedule,group_name):
+    link = f"https://ekata.lk/unsubscribe"
+    while True:
+        obj_list = group_schedule[group_name]
+        msg_text = ''
+        for i in obj_list:
+            if i.starting_period != i.ending_period:
+                from_date = format(i.starting_period,'M dS')
+                # TODO: remove this logs
+                print(f"Message_generator - Used fromDate: {from_date}")
+                print(f"Message_generator - Alternative fromDate: {i.starting_period.astimezone(tz=local_time)}")
+                from_time = i.starting_period.astimezone(tz=local_time).strftime('%I:%M %p')
+                to_time = i.ending_period.astimezone(tz=local_time).strftime('%I:%M %p')
+                msg_text += f"{from_date} from {from_time} to {to_time}, "
+        msg_text = msg_text[:-2]
+        msg_text += f" [Group {group_name} power cut schedule]. To unsubscribe go to {link}"
+        received = yield msg_text
+        group_name = received if received is not None else None
+
+
 @app.task(bind=True, max_retries=settings.CELERY_TASK_PUBLISH_RETRY)
 def send_sms_to_batch(self):
-    headers = CaseInsensitiveDict()
-    access_token = login_sms_api()
-    headers["Authorization"] = f"Bearer {access_token}"
-    headers["Content-Type"] = "application/json"
-    time = datetime.datetime.now(tz=local_time) + timedelta(minutes=5)
+    from_date_filter = datetime.datetime.now(tz=local_time) + timedelta(minutes=5)
     all_batch_data = Batch.objects.filter(status="FAILED",
                                           is_batch_run=False,
-                                          schedule__starting_period__gte=time
+                                          schedule__starting_period__gte=from_date_filter
                                           ).prefetch_related(
                                             Prefetch("subscriber",
                                                      queryset=Subscriber.objects.filter(is_unsubscribed=False)))
@@ -233,10 +293,6 @@ def send_sms_to_batch(self):
         print("This attempt has been failed.")
         raise self.retry(countdown=300)
 
-from lightsoff.scraper.scraper import scrape
-from os.path import exists
-from os import getcwd, remove
-
 
 @app.task(bind=True, max_retries=0)
 def scrapper_data(self):
@@ -256,7 +312,6 @@ def scrapper_data(self):
     if result == "" or not type(result) is dict:
         print("Data already exists or wrong response from scraper")
         return None
-
 
     # Dry run
     #scraperFolder = f"{os.path.dirname(os.path.abspath(__file__))}/"
@@ -343,29 +398,8 @@ def scrapper_data(self):
         stored_last_processed.save()
 
     print("Scraper task finished")
-
     
 def chunks(lst, n):
     """Yield successive n-sized chunks from lst."""
     for i in range(0, len(lst), n):
         yield lst[i:i + n]
-
-
-
-def message_generator(group_schedule,group_name):
-    link = f"https://ekata.lk/unsubscribe"
-    while True:
-        obj_list = group_schedule[group_name]
-        msg_text = ''
-        for i in obj_list:
-            if i.starting_period != i.ending_period:
-                from_date = format(i.starting_period,'M dS')
-                print("Used fromDate: " + from_date)
-                print("Alternative fromDate: " + i.starting_period.astimezone(tz=local_time))
-                from_time = i.starting_period.astimezone(tz=local_time).strftime('%I:%M %p')
-                to_time = i.ending_period.astimezone(tz=local_time).strftime('%I:%M %p')
-                msg_text += f"{from_date} from {from_time} to {to_time}, "
-        msg_text = msg_text[:-2]
-        msg_text += f" [Group {group_name} power cut schedule]. To unsubscribe go to {link}"
-        received = yield msg_text
-        group_name = received if received is not None else None
