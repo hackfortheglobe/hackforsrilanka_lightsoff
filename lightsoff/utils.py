@@ -156,9 +156,9 @@ def login_sms_api():
         return old_token
     else:
         url = "https://e-sms.dialog.lk/api/v1/login"
-        headers = {'Content-Type: application/json'}
+        headers = {'Content-Type': 'application/json'}
         user_credentials = {"username": settings.SMS_API_USERNAME,
-                        "password": settings.SMS_API_PASSWORD}
+                            "password": settings.SMS_API_PASSWORD}
         res_data = requests.post(url, headers=headers, data=user_credentials)
         expired_token_time = datetime.datetime.now(tz=local_time) + timedelta(hours=11, minutes=50)
         if res_data.status_code == 200:
