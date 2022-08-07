@@ -159,7 +159,7 @@ def login_sms_api():
         headers = {'Content-Type': 'application/json'}
         user_credentials = {"username": settings.SMS_API_USERNAME,
                             "password": settings.SMS_API_PASSWORD}
-        res_data = requests.post(url, headers=headers, data=user_credentials)
+        res_data = requests.post(url, data=user_credentials)
         expired_token_time = datetime.datetime.now(tz=local_time) + timedelta(hours=11, minutes=50)
         if res_data.status_code == 200:
             if res_data.json().get("errCode") == '':
