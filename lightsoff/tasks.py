@@ -179,7 +179,7 @@ def do_send_sms_notification(isTest):
         TEST_DRY_RUN = True
         TEST_GROUPS = ['A', 'M']
         TEST_PHONE_NUMBERS = ['123456789']
-        TEST_FROM_DATE = datetime.datetime(2022,8,3,0,0,0,tzinfo=pytz.UTC)
+        TEST_FROM_DATE = datetime.datetime(2022,8,5,0,0,0,tzinfo=pytz.UTC)
         print(f"Test SMS started. DRY_RUN:{TEST_DRY_RUN}, GROUPS:{TEST_GROUPS}, FROM_DATE:{TEST_FROM_DATE}, PHONE_NUMBERS:{TEST_PHONE_NUMBERS}")
         schedule_group = ScheduleGroup.objects.filter(starting_period__gte=TEST_FROM_DATE).select_related().order_by('group_name')
     else:
@@ -198,7 +198,7 @@ def do_send_sms_notification(isTest):
             if (schedule_data.group_name.name not in TEST_GROUPS):
                 continue
             else:
-                print(f"Test SMS schedule {schedule_data.id}, group {schedule_data.group_name.name}, from {schedule_data.starting_period}, to {schedule_data.ending_period}")
+                print(f"Test SMS using schedule {schedule_data.id} for group {schedule_data.group_name.name} from {schedule_data.starting_period.astimezone(tz=local_time)} to {schedule_data.ending_period.astimezone(tz=local_time)}")
 
         all_sub = Subscriber.objects.filter(group_name=schedule_data.group_name,
                                             is_unsubscribed=False)
@@ -287,10 +287,7 @@ def message_generator(group_schedule,group_name):
         msg_text = ''
         for i in obj_list:
             if i.starting_period != i.ending_period:
-                from_date = format(i.starting_period,'M dS')
-                # TODO: remove this logs
-                print(f"Message_generator - Used fromDate: {from_date}")
-                print(f"Message_generator - Alternative fromDate: {i.starting_period.astimezone(tz=local_time)}")
+                from_date = format(i.starting_period.astimezone(tz=local_time),'M dS')
                 from_time = i.starting_period.astimezone(tz=local_time).strftime('%I:%M %p')
                 to_time = i.ending_period.astimezone(tz=local_time).strftime('%I:%M %p')
                 msg_text += f"{from_date} from {from_time} to {to_time}, "
