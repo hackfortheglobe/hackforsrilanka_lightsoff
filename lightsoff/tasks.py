@@ -176,9 +176,9 @@ def test_send_sms_notification(self):
 
 def do_send_sms_notification(isTest):
     if (isTest):
-        TEST_DRY_RUN = True
+        TEST_DRY_RUN = False
         TEST_GROUPS = ['A', 'M']
-        TEST_PHONE_NUMBERS = ['123456789']
+        TEST_PHONE_NUMBERS = ['773634410']
         TEST_FROM_DATE = datetime.datetime(2022,8,5,0,0,0,tzinfo=pytz.UTC)
         print(f"Test SMS started. DRY_RUN:{TEST_DRY_RUN}, GROUPS:{TEST_GROUPS}, FROM_DATE:{TEST_FROM_DATE}, PHONE_NUMBERS:{TEST_PHONE_NUMBERS}")
         schedule_group = ScheduleGroup.objects.filter(starting_period__gte=TEST_FROM_DATE).select_related().order_by('group_name')
