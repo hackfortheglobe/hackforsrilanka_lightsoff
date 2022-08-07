@@ -148,25 +148,29 @@ local_time = pytz_timezones(settings.TIME_ZONE)
 
 
 def login_sms_api():
-    user_credentials = {"username": settings.SMS_API_USERNAME,
-                        "password": settings.SMS_API_PASSWORD}
     now_time = datetime.datetime.now(tz=local_time)
-
-    token = SmsApiAccessToken.objects.filter(expired_at__gt=now_time).order_by("-id").first()
-    if token:
-        print("exists access_token")
-        return token.access_token
+    stored_token = SmsApiAccessToken.objects.filter(expired_at__gt=now_time).order_by("-id").first()
+    if stored_token:
+        old_token=stored_token.access_token
+        print(f"Dialog login - Reusing previous token: {stored_token.id}# {old_token[-10:]}")
+        return old_token
     else:
-        header = {'Content-Type: application/json'}
-        res_data = requests.post("https://e-sms.dialog.lk/api/v1/login",
-                                 data=user_credentials)
+        url = "https://e-sms.dialog.lk/api/v1/login"
+        headers = CaseInsensitiveDict()
+        headers["Content-Type"] = "application/json"
+        user_credentials = {"username": settings.SMS_API_USERNAME,
+                        "password": settings.SMS_API_PASSWORD}
+        res_data = requests.post(url, headers=headers, data=user_credentials)
         expired_token_time = datetime.datetime.now(tz=local_time) + timedelta(hours=11, minutes=50)
         if res_data.status_code == 200:
             if res_data.json().get("errCode") == '':
                 data = res_data.json()
-                SmsApiAccessToken.objects.create(access_token=data.get("token"),
+                new_token = data.get("token")
+                print(f"Dialog login: obtained new token {new_token[-10:]}")
+                SmsApiAccessToken.objects.create(access_token=new_token,
                                                  expired_at=expired_token_time)
-                return data.get("token")
+                return new_token
+        print(f"Dialog login: unable to obtain token")
         raise Exception("Credential's are invalide for sms api.")
 
 
@@ -185,7 +189,6 @@ import json
 from requests.structures import CaseInsensitiveDict
 
 def send_sms(numbers, message, tx_id):
-
     headers = CaseInsensitiveDict()
     access_token = login_sms_api()
     url = "https://e-sms.dialog.lk/api/v1/sms"
