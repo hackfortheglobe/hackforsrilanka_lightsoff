@@ -104,69 +104,9 @@ import pytz
 
 @app.task(bind=True, max_retries=0)
 def send_sms_notification(self):
-
-    # New way (collapsing and testing)
-    #print("Task send_sms_notification started")
-    #do_send_sms_notification(isTest=False)
-    #print(f"Task send_sms_notification finished")
-
-    # Old way (non collapsing and non test)
-    link = f"https://ekata.lk/unsubscribe"
-    schedule_group = ScheduleGroup.objects.filter(is_run=False,
-                                                  starting_period__gte=datetime.datetime.now(tz=local_time)
-                                                  ).select_related()
-    for schedule_data in schedule_group:
-        all_sub = Subscriber.objects.filter(group_name=schedule_data.group_name,
-                                            is_unsubscribed=False)
-        if len(all_sub) == 0:
-            print(f"there is not subscriber for this group name {schedule_data.group_name.name}")
-            continue
-        sub_user = all_sub.values(mobile=F("mobile_number"))
-        paginator = Paginator(sub_user, 100)
-        for page_no in paginator.page_range:
-            current_page = paginator.get_page(page_no)
-            current_qs = current_page.object_list
-            tx_id = generate_uniqe_id()
-            from_date = localtime(schedule_data.starting_period).strftime('%b %-dth')
-            from_time = localtime(schedule_data.starting_period).strftime('%I:%M %p')
-            to_time = localtime(schedule_data.ending_period).strftime('%I:%M %p')
-            message = f"{from_date} from {from_time} to {to_time} [Group {schedule_data.group_name.name} power cut schedule]. To unsubscribe go to {link}"
-            numbers = list(current_qs)
-            resp = send_sms(numbers, message, tx_id)
-            if resp.status_code == 200:
-                res_data = resp.json()
-                tx_data = Transaction.objects.create(campaingn_id=res_data["data"].get("campaignId", None),
-                                                     campaingn_cost=res_data["data"].get("campaignCost", None),
-                                                     user_id=res_data["data"].get("userId", None),
-                                                     status="SUCCESS",
-                                                     tx_id=tx_id)
-                batch_data = Batch.objects.create(transaction=tx_data,
-                                                  status="SUCCESS",
-                                                  is_batch_run=True,
-                                                  message=message,
-                                                  schedule=schedule_data)
-                batch_data.subscriber.set(list(current_qs.values_list("id", flat=True)))
-                batch_data.save()
-                print("Batch has been run successfully.")
-            else:
-                res_data = resp.json()
-                tx_data = Transaction.objects.create(status="FAILED",
-                                                     tx_id=tx_id)
-                batch_data = Batch.objects.create(transaction=tx_data,
-                                    status="FAILED",
-                                    message=message,
-                                    schedule=schedule_data)
-                batch_data.subscriber.set(list(current_qs.values_list("id", flat=True)))
-                batch_data.save()
-                time = datetime.datetime.now(tz=local_time) + timedelta(minutes=5)
-                clock_time = ClockedSchedule.objects.create(clocked_time=time)
-                PeriodicTask.objects.create(clocked=clock_time,
-                                            one_off=True,
-                                            task="lightsoff.tasks.send_sms_to_batch",
-                                            name=f'send_batch_sms_{batch_data.id}')
-                print(f"Task is created for this batch number {batch_data.id}.")
-            schedule_data.is_run = True
-            schedule_data.save()
+    print("Task send_sms_notification started")
+    do_send_sms_notification(isTest=False)
+    print(f"Task send_sms_notification finished")
 
 @app.task(bind=True, max_retries=0)
 def test_send_sms_notification(self):
@@ -231,11 +171,6 @@ def do_send_sms_notification(isTest):
 
             # Tests will never run the following lines, they will continue processing the next schedule_data
             continue
-        
-        # TODO: Remove after first test of the isTest, just for first run safety
-        if (isTest):
-            print("Test SMS WARNING! The test almost save things to DB, task cancelled")
-            return
 
         # Update schedule as already run in the DB (never for testing)
         schedule_data.is_run = True
