@@ -171,6 +171,7 @@ def login_sms_api():
                                                  expired_at=expired_token_time)
                 return new_token
         print(f"Dialog login: unable to obtain token")
+        print(res_data.json())
         raise Exception("Credential's are invalide for sms api.")
 
 
