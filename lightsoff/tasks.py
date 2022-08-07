@@ -220,7 +220,10 @@ def do_send_sms_notification(isTest):
                 print(f"Test SMS sender: Message not sent (dry run enabled)")
                 continue
             tx_id = generate_uniqe_id()
-            resp = send_sms(TEST_PHONE_NUMBERS, message, tx_id)
+            formatted_numbers=[]
+            for number in TEST_PHONE_NUMBERS:
+                formatted_numbers.append({'mobile':number})
+            resp = send_sms(formatted_numbers, message, tx_id)
             if resp.status_code == 200:
                 print("Test SMS sender: Message sent successfully.")
             else:

@@ -156,7 +156,6 @@ def login_sms_api():
         return old_token
     else:
         url = "https://e-sms.dialog.lk/api/v1/login"
-        headers = {'Content-Type': 'application/json'}
         user_credentials = {"username": settings.SMS_API_USERNAME,
                             "password": settings.SMS_API_PASSWORD}
         res_data = requests.post(url, data=user_credentials)
@@ -170,8 +169,6 @@ def login_sms_api():
                                                  expired_at=expired_token_time)
                 return new_token
         print(f"Dialog login: unable to obtain token")
-        print(f"Request: {res_data.request.url}, {res_data.request.headers}, {res_data.request.body}")
-        print(f"Response: {res_data.json()}")
         raise Exception("Credential's are invalide for sms api.")
 
 
