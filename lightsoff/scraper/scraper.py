@@ -458,7 +458,7 @@ def run_proxy_scraper(last_row_id):
     print(f"Received schedules: {len(data)}")
 
     # Filter already inserted rows
-    data_filter = filter(lambda item: item['id']>last_row_id, data)
+    data_filter = filter(lambda item: int(item['id'])>int(last_row_id), data)
     filtered_data = sorted(data_filter, key = lambda item: (item['id']))
     print(f"Filtered schedules: {len(filtered_data)}")
 
